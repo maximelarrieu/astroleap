@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>AstroLeap: Lunar Odyssey</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #070913;
+      color: #e2e8f0;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      position: relative;
+      width: 960px;
+      max-width: 100vw;
+      aspect-ratio: 16 / 9;
+      box-shadow: 0 0 40px rgba(60, 180, 255, 0.25);
+      border: 2px solid #1e293b;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      outline: none;
+    }
+    .info-bar {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #94a3b8;
+      text-align: center;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      color: #38bdf8;
+      font-weight: bold;
+    }
+  </style>
+  <script src="wasm_exec.js"></script>
+  <script>
+    if (!WebAssembly.instantiateStreaming) {
+      WebAssembly.instantiateStreaming = async (resp, importObject) => {
+        const source = await (await resp).arrayBuffer();
+        return await WebAssembly.instantiate(source, importObject);
+      };
+    }
+
+    const go = new Go();
+    WebAssembly.instantiateStreaming(fetch("game.wasm"), go.importObject).then((result) => {
+      go.run(result.instance);
+    }).catch((err) => {
+      console.error("Failed to load WASM game:", err);
+    });
+  </script>
+</head>
+<body>
+  <div id="game-container"></div>
+  <div class="info-bar">
+    <span class="badge">A / D</span> Move &nbsp;|&nbsp;
+    <span class="badge">SPACE</span> Jump / Thruster &nbsp;|&nbsp;
+    <span class="badge">J</span> Shoot &nbsp;|&nbsp;
+    <span class="badge">Q</span> Swap Weapon &nbsp;|&nbsp;
+    <span class="badge">P</span> Pause &nbsp;|&nbsp;
+    <span class="badge">M</span> Mute &nbsp;|&nbsp;
+    <span class="badge">F11</span> Fullscreen
+  </div>
+</body>
+</html>
