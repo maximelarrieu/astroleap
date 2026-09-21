@@ -36,18 +36,27 @@ type TextureAtlas struct {
 	TileRockCrimson    *ebiten.Image
 	TileSurfaceIce     *ebiten.Image
 	TileRockIce        *ebiten.Image
+	TileSurfaceVessel  *ebiten.Image
+	TileRockVessel     *ebiten.Image
+	TileSurfaceReactor *ebiten.Image
+	TileRockReactor    *ebiten.Image
 	TilePlatform       *ebiten.Image
 	TileSpikes         *ebiten.Image
 	Crystals           [4]*ebiten.Image
 	Lander             *ebiten.Image
+	AirlockDoor        *ebiten.Image
+	WarpConsole        *ebiten.Image
+	KeyCard            *ebiten.Image
+	RepairCore         *ebiten.Image
 	Earth              *ebiten.Image
 	Mars               *ebiten.Image
 	Jupiter            *ebiten.Image
 
 	// UI
-	HeartFull  *ebiten.Image
-	HeartEmpty *ebiten.Image
+	HeartFull    *ebiten.Image
+	HeartEmpty   *ebiten.Image
 	ThrusterIcon *ebiten.Image
+	IconKey      *ebiten.Image
 
 	// Weapons & Projectiles
 	LaserBolt    *ebiten.Image
@@ -555,6 +564,26 @@ func buildAtlas() *TextureAtlas {
 	a.TileSurfaceIce = parsePixelArt(16, 16, tileSurfRows, tileIceMap)
 	a.TileRockIce = parsePixelArt(16, 16, tileRockRows, tileIceMap)
 
+	// Sector 4: Mothership Vessel Metallic Hull Tiles
+	tileVesselMap := map[rune]color.RGBA{
+		'T': color.RGBA{100, 240, 255, 255}, // Glowing cyan rim LED strip
+		'B': color.RGBA{95, 110, 135, 255},  // Titanium alloy deck
+		'C': color.RGBA{55, 65, 85, 255},    // Shadowed hull panel
+		'D': color.RGBA{28, 34, 48, 255},    // Heavy structural bulkheads
+	}
+	a.TileSurfaceVessel = parsePixelArt(16, 16, tileSurfRows, tileVesselMap)
+	a.TileRockVessel = parsePixelArt(16, 16, tileRockRows, tileVesselMap)
+
+	// Sector 5: Reactor Engine Bay High-Tech Alloy Tiles
+	tileReactorMap := map[rune]color.RGBA{
+		'T': color.RGBA{255, 175, 40, 255}, // High-temp amber warning crest
+		'B': color.RGBA{120, 85, 65, 255},  // Thermal bronze plating
+		'C': color.RGBA{75, 45, 30, 255},   // Heat vent recess
+		'D': color.RGBA{38, 24, 20, 255},   // Heavy obsidian engine alloy
+	}
+	a.TileSurfaceReactor = parsePixelArt(16, 16, tileSurfRows, tileReactorMap)
+	a.TileRockReactor = parsePixelArt(16, 16, tileRockRows, tileReactorMap)
+
 	// Floating Sci-Fi Metal Platform
 	cPlatTop := color.RGBA{75, 215, 255, 255} // Glowing cyan rim
 	cPlatMet1 := color.RGBA{80, 95, 120, 255}
@@ -769,6 +798,172 @@ func buildAtlas() *TextureAtlas {
 	a.Lander = parsePixelArt(32, 32, landerRows, landerMap)
 
 	// -------------------------------------------------------------
+	// AIRLOCK DOOR (32x32) Bulkhead security portal for Sector 4
+	// -------------------------------------------------------------
+	airlockMap := map[rune]color.RGBA{
+		'.': {0, 0, 0, 0},
+		'#': color.RGBA{15, 20, 30, 255},
+		'M': color.RGBA{90, 105, 125, 255},
+		'S': color.RGBA{50, 60, 75, 255},
+		'G': color.RGBA{60, 220, 255, 255}, // Glass view / shield
+		'W': color.RGBA{200, 240, 255, 255},
+		'R': color.RGBA{255, 50, 60, 255},  // Red status light
+		'A': color.RGBA{255, 200, 50, 255}, // Amber caution stripes
+	}
+	airlockRows := []string{
+		"....########################....",
+		"...#MMMMMMMMMMMMMMMMMMMMMMMM#...",
+		"..#MMAAAAMMMMMMMMMMMMMMAAAAMM#..",
+		"..#MMAAAAMMMMMMMMMMMMMMAAAAMM#..",
+		"..#MMSSSS################SSMM#..",
+		"..#MMSS#GGGGGGGGGGGGGGGG#SSMM#..",
+		"..#MMSS#GGWWGGGGGGGGGGGG#SSMM#..",
+		"..#MMSS#GGWWGGGGGGGGGGGG#SSMM#..",
+		"..#MMSS#GGGGGGGGGGGGGGGG#SSMM#..",
+		"..#MMSS##################SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSS#...#RR####RR#...#SSMM#..",
+		"..#MMSS#...#RR####RR#...#SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSS#...##########...#SSMM#..",
+		"..#MMSS#...#MMMMMMMM#...#SSMM#..",
+		"..#MMSS#...#MMMMMMMM#...#SSMM#..",
+		"..#MMSS#...#SSSSSSSS#...#SSMM#..",
+		"..#MMSS#...##########...#SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSS#................#SSMM#..",
+		"..#MMSSSS################SSMM#..",
+		"..#MMAAAAMMMMMMMMMMMMMMAAAAMM#..",
+		"..#MMAAAAMMMMMMMMMMMMMMAAAAMM#..",
+		"...#MMMMMMMMMMMMMMMMMMMMMMMM#...",
+		"....########################....",
+	}
+	a.AirlockDoor = parsePixelArt(32, 32, airlockRows, airlockMap)
+
+	// -------------------------------------------------------------
+	// WARP ENGINE CONSOLE (32x32) Goal terminal for Sector 5
+	// -------------------------------------------------------------
+	warpMap := map[rune]color.RGBA{
+		'.': {0, 0, 0, 0},
+		'#': color.RGBA{15, 20, 30, 255},
+		'M': color.RGBA{100, 115, 140, 255},
+		'D': color.RGBA{55, 65, 80, 255},
+		'C': color.RGBA{50, 220, 255, 255}, // Cyan energy rings
+		'W': color.RGBA{240, 255, 255, 255},
+		'P': color.RGBA{255, 190, 40, 255}, // Golden warp core
+		'G': color.RGBA{80, 255, 120, 255}, // Green online LEDs
+	}
+	warpRows := []string{
+		".............######.............",
+		"...........##MMMMMM##...........",
+		"..........#MMCCCCCCMM#..........",
+		".........#MMCCWWWWCCMM#.........",
+		"........#MMCCWWWWWWCCMM#........",
+		"........#MDCCWWWWWWCCDM#........",
+		".......#MDDCCWWWWWWCCDDM#.......",
+		".......#MDDCCCCCCCCCCDDM#.......",
+		".......#MDDDDDDDDDDDDDDM#.......",
+		".......#MDD###GGGG###DDM#.......",
+		".......#MDD#PPPPPPPP#DDM#.......",
+		".......#MDD#PPWWWWPP#DDM#.......",
+		".......#MDD#PPWWWWPP#DDM#.......",
+		".......#MDD#PPPPPPPP#DDM#.......",
+		".......#MDD##########DDM#.......",
+		".......#MDD#CCCCCCCC#DDM#.......",
+		".......#MDD#CCWWWWCC#DDM#.......",
+		".......#MDD#CCCCCCCC#DDM#.......",
+		".......#MDD##########DDM#.......",
+		".......#MDD###GGGG###DDM#.......",
+		"......#MMDDD#PPPPPP#DDDMM#......",
+		".....#MMMDDD#PPWWPP#DDDMMM#.....",
+		"....#MMMMDDD########DDDMMMM#....",
+		"...#MMMMMMDDDDDDDDDDDDMMMMMM#...",
+		"..#MMMMMMMMMMMMMMMMMMMMMMMMMM#..",
+		"..#DDDDDDDDDDDDDDDDDDDDDDDDDD#..",
+		"..#DD######################DD#..",
+		"..#DD#....................#DD#..",
+		"..#DD#....................#DD#..",
+		"..####....................####..",
+		"................................",
+		"................................",
+	}
+	a.WarpConsole = parsePixelArt(32, 32, warpRows, warpMap)
+
+	// -------------------------------------------------------------
+	// SECURITY ACCESS KEYCARD (16x16) Collectible Key for Sector 4
+	// -------------------------------------------------------------
+	cKeyGold := color.RGBA{255, 215, 50, 255}
+	cKeyGoldHi := color.RGBA{255, 250, 170, 255}
+	cKeyGoldSh := color.RGBA{180, 135, 20, 255}
+	cKeyCyan := color.RGBA{60, 240, 255, 255}
+	cKeyDark := color.RGBA{20, 25, 35, 255}
+	keyMap := map[rune]color.RGBA{
+		'.': {0, 0, 0, 0},
+		'#': cKeyDark,
+		'G': cKeyGold,
+		'H': cKeyGoldHi,
+		'S': cKeyGoldSh,
+		'C': cKeyCyan,
+	}
+	keyRows := []string{
+		".....######.....",
+		"....#HHHHHH#....",
+		"...#HHGGGGGG#...",
+		"..#HHGGCCCCGG#..",
+		"..#HGGCCCCCCG#..",
+		"..#HGGCCCCSSG#..",
+		"..#GGGGSSSSGG#..",
+		"..#GGGGGGGGGG#..",
+		"..#GGGGGGGGGG#..",
+		"..#GGGGGGGGGG#..",
+		"..#GG#GG#GGGG#..",
+		"..#GG#GG#GGGG#..",
+		"..#SS#SS#SSSS#..",
+		"...#SSSSSSSS#...",
+		"....########....",
+		"................",
+	}
+	a.KeyCard = parsePixelArt(16, 16, keyRows, keyMap)
+
+	// -------------------------------------------------------------
+	// REACTOR REPAIR CORE (16x16) Fuel Cell for Sector 5
+	// -------------------------------------------------------------
+	coreMap := map[rune]color.RGBA{
+		'.': {0, 0, 0, 0},
+		'#': color.RGBA{15, 20, 30, 255},
+		'M': color.RGBA{120, 135, 160, 255}, // Metal caps
+		'D': color.RGBA{60, 70, 90, 255},
+		'P': color.RGBA{255, 60, 160, 255},  // High-energy plasma
+		'C': color.RGBA{80, 240, 255, 255},  // Cyan ion coil
+		'W': color.RGBA{255, 255, 255, 255}, // White hot core
+	}
+	coreRows := []string{
+		".....######.....",
+		"....#MMMMMM#....",
+		"....#MDDDDM#....",
+		"...#MCCCCCCM#...",
+		"...#CCWWWWCC#...",
+		"...#CPWWWWPC#...",
+		"...#PPWWWWPP#...",
+		"...#PPWWWWPP#...",
+		"...#CPWWWWPC#...",
+		"...#CCWWWWCC#...",
+		"...#MCCCCCCM#...",
+		"....#MDDDDM#....",
+		"....#MMMMMM#....",
+		".....######.....",
+		"................",
+		"................",
+	}
+	a.RepairCore = parsePixelArt(16, 16, coreRows, coreMap)
+
+	// -------------------------------------------------------------
 	// EARTH (24x24) Glowing blue marble in sky
 	// -------------------------------------------------------------
 	cSpaceTrans := color.RGBA{0, 0, 0, 0}
@@ -950,6 +1145,25 @@ func buildAtlas() *TextureAtlas {
 		'f': color.RGBA{255, 80, 20, 255},
 	}
 	a.ThrusterIcon = parsePixelArt(8, 8, thrustIconRows, thrustIconMap)
+
+	// HUD Key Icon (8x8)
+	iconKeyMap := map[rune]color.RGBA{
+		'.': {0, 0, 0, 0},
+		'#': color.RGBA{30, 25, 10, 255},
+		'G': color.RGBA{255, 215, 50, 255},
+		'H': color.RGBA{255, 250, 160, 255},
+	}
+	iconKeyRows := []string{
+		"...##...",
+		"..#HH#..",
+		"..#GG#..",
+		"...#G#..",
+		"...#G##.",
+		"...#G#..",
+		"...#G##.",
+		"...##...",
+	}
+	a.IconKey = parsePixelArt(8, 8, iconKeyRows, iconKeyMap)
 
 	// -------------------------------------------------------------
 	// WEAPONS & PROJECTILES

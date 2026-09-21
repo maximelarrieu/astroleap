@@ -55,6 +55,7 @@ type Player struct {
 	ThrustSFXTimer float64
 	State          PlayerState
 	StompCombo     int
+	BoostTimer     float64 // Active duration of infinite ion thruster boost
 
 	// Weapon Inventory
 	HasLaser      bool
@@ -134,6 +135,14 @@ func (p *Player) Update(dt float64, moveLeft, moveRight, jumpPressed, jumpHeld b
 	// 3. Jump & Jetpack Thruster logic
 	p.IsThrusting = false
 
+	// Countdown active Ion Boost timer
+	if p.BoostTimer > 0 {
+		p.BoostTimer -= dt
+		if p.BoostTimer < 0 {
+			p.BoostTimer = 0
+		}
+	}
+
 	if p.OnGround {
 		p.Fuel += FuelRecharge * dt
 		if p.Fuel > MaxFuel {
@@ -147,13 +156,17 @@ func (p *Player) Update(dt float64, moveLeft, moveRight, jumpPressed, jumpHeld b
 			ps.SpawnDustKick(p.X+8, p.Y+16)
 		}
 	} else {
-		// Mid-air: Can use Jetpack if holding jump and has fuel
-		if jumpHeld && p.Fuel > 0 && p.VY > -2.2 {
+		// Mid-air: Can use Jetpack if holding jump and has fuel (or ion boost active)
+		if jumpHeld && (p.Fuel > 0 || p.BoostTimer > 0) && p.VY > -2.2 {
 			p.IsThrusting = true
 			p.VY += JetpackThrust
-			p.Fuel -= FuelBurnRate * dt
-			if p.Fuel < 0 {
-				p.Fuel = 0
+			if p.BoostTimer <= 0 {
+				p.Fuel -= FuelBurnRate * dt
+				if p.Fuel < 0 {
+					p.Fuel = 0
+				}
+			} else {
+				p.Fuel = MaxFuel // Supercharged infinite fuel
 			}
 
 			// Particle exhaust sparks
@@ -430,4 +443,22 @@ func (p *Player) Draw(screen *ebiten.Image, camX float64) {
 		op.GeoM.Translate(screenX, screenY)
 		screen.DrawImage(img, op)
 	}
+}
+
+// Heal restores health up to MaxHealth. Returns true if health was restored.
+func (p *Player) Heal(amount int) bool {
+	if p.Health >= MaxHealth {
+		return false
+	}
+	p.Health += amount
+	if p.Health > MaxHealth {
+		p.Health = MaxHealth
+	}
+	return true
+}
+
+// ApplyBoost grants temporary infinite ion thruster fuel.
+func (p *Player) ApplyBoost(duration float64) {
+	p.BoostTimer = duration
+	p.Fuel = MaxFuel
 }

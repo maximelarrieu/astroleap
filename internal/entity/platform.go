@@ -2,6 +2,7 @@ package entity
 
 import (
 	"image/color"
+	"math"
 
 	"astroleap/internal/physics"
 
@@ -55,13 +56,14 @@ func (mp *MovingPlatform) Update(dt float64) {
 	// Total distance between endpoints
 	dx := mp.EndX - mp.StartX
 	dy := mp.EndY - mp.StartY
-	totalDist := (dx*dx + dy*dy)
-	if totalDist <= 0.001 {
+	dist := math.Hypot(dx, dy)
+	if dist <= 0.001 || mp.Speed <= 0 {
+		mp.DX = 0
+		mp.DY = 0
 		return
 	}
 
-	distPerSec := mp.Speed
-	normSpeed := distPerSec / 100.0 // rate of progress
+	normSpeed := mp.Speed / dist // rate of progress per second
 
 	mp.Progress += mp.Direction * normSpeed * dt
 	if mp.Progress >= 1.0 {

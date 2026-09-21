@@ -25,3 +25,12 @@ func TestRectContainsPoint(t *testing.T) {
 		t.Errorf("expected (5, 5) to be outside rect")
 	}
 }
+
+func TestRectIsEmpty(t *testing.T) {
+	if !(Rect{}).IsEmpty() {
+		t.Errorf("expected zero rect to be empty")
+	}
+	if (Rect{W: 10, H: 10}).IsEmpty() {
+		t.Errorf("expected 10x10 rect not to be empty")
+	}
+}

@@ -20,3 +20,8 @@ func (r Rect) Overlaps(o Rect) bool {
 func (r Rect) ContainsPoint(px, py float64) bool {
 	return px >= r.X && px <= r.X+r.W && py >= r.Y && py <= r.Y+r.H
 }
+
+// IsEmpty returns true if the rectangle has zero width or height.
+func (r Rect) IsEmpty() bool {
+	return r.W <= 0 || r.H <= 0
+}

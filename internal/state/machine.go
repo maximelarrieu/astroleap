@@ -13,6 +13,10 @@ func NewMachine(initial State) *Machine {
 	return m
 }
 
+func (m *Machine) Current() State {
+	return m.current
+}
+
 func (m *Machine) Change(next State) {
 	if m.current != nil {
 		m.current.Exit()

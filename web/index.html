@@ -41,17 +41,132 @@
     }
     .info-bar {
       margin-top: 12px;
-      font-size: 14px;
+      font-size: 13px;
       color: #94a3b8;
       text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
     }
     .badge {
       display: inline-block;
-      padding: 2px 8px;
+      padding: 2px 7px;
       background: #1e293b;
       border-radius: 4px;
       color: #38bdf8;
       font-weight: bold;
+    }
+    .badge-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      background: #0284c7;
+      color: #fff;
+      border: 1px solid #38bdf8;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: bold;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .badge-btn:hover {
+      background: #0369a1;
+      transform: scale(1.04);
+    }
+    .badge-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Retro Leaderboard Modal */
+    #leaderboard-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+    #leaderboard-modal.active {
+      display: flex;
+    }
+    .modal-card {
+      background: #0b1120;
+      border: 2px solid #38bdf8;
+      border-radius: 8px;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.35);
+      width: 480px;
+      max-width: 90vw;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 10px;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #38bdf8;
+      letter-spacing: 1px;
+    }
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 20px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .close-btn:hover {
+      color: #f87171;
+    }
+    .score-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .score-table th {
+      text-align: left;
+      padding: 6px 8px;
+      color: #94a3b8;
+      border-bottom: 1px solid #334155;
+    }
+    .score-table td {
+      padding: 8px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .score-table tr:hover {
+      background: rgba(56, 189, 248, 0.05);
+    }
+    .rank-col {
+      color: #facc15;
+      font-weight: bold;
+      width: 40px;
+    }
+    .score-col {
+      color: #38bdf8;
+      font-weight: bold;
+      text-align: right;
+    }
+    .empty-msg {
+      text-align: center;
+      color: #64748b;
+      padding: 20px 0;
+      font-style: italic;
     }
   </style>
   <script src="wasm_exec.js"></script>
@@ -69,18 +184,115 @@
     }).catch((err) => {
       console.error("Failed to load WASM game:", err);
     });
+
+    // Leaderboard Modal Control
+    async function openLeaderboard() {
+      const modal = document.getElementById('leaderboard-modal');
+      modal.classList.add('active');
+      await refreshLeaderboard();
+    }
+
+    function closeLeaderboard() {
+      const modal = document.getElementById('leaderboard-modal');
+      modal.classList.remove('active');
+    }
+
+    async function refreshLeaderboard() {
+      const tbody = document.getElementById('score-rows');
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">Transmitting with lunar telemetry...</td></tr>';
+      try {
+        const res = await fetch('/api/v1/scores');
+        if (!res.ok) throw new Error('Network response not ok');
+        const scores = await res.json();
+        if (!scores || scores.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">No flight records logged yet. Be the first!</td></tr>';
+          return;
+        }
+        tbody.innerHTML = '';
+        scores.sort((a, b) => b.score - a.score);
+        scores.forEach((entry, idx) => {
+          const tr = document.createElement('tr');
+          const rankDisplay = idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : `#${idx + 1}`;
+          tr.innerHTML = `
+            <td class="rank-col">${rankDisplay}</td>
+            <td>${escapeHtml(entry.player_name || 'ANONYMOUS')}</td>
+            <td class="score-col">${Number(entry.score).toLocaleString()}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-msg" style="color:#f87171;">Telemetry offline. Run server with scores API.</td></tr>';
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    // Window score submission hook for game or testing
+    window.submitAstroScore = async function(playerName, score) {
+      try {
+        await fetch('/api/v1/scores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ player_name: playerName, score: score })
+        });
+      } catch (err) {
+        console.warn('Score submission error:', err);
+      }
+    };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeLeaderboard();
+      }
+    });
   </script>
 </head>
 <body>
   <div id="game-container"></div>
   <div class="info-bar">
-    <span class="badge">A / D</span> Move &nbsp;|&nbsp;
-    <span class="badge">SPACE</span> Jump / Thruster &nbsp;|&nbsp;
-    <span class="badge">J</span> Shoot &nbsp;|&nbsp;
-    <span class="badge">Q</span> Swap Weapon &nbsp;|&nbsp;
-    <span class="badge">P</span> Pause &nbsp;|&nbsp;
-    <span class="badge">M</span> Mute &nbsp;|&nbsp;
+    <span class="badge">A / D</span> Move
+    <span class="badge">SPACE</span> Jump / Jetpack
+    <span class="badge">J</span> Shoot
+    <span class="badge">Q</span> Weapon
+    <span class="badge">P</span> Pause
+    <span class="badge">F2</span> CRT Scanlines
+    <span class="badge">M</span> Mute
     <span class="badge">F11</span> Fullscreen
+    &nbsp;
+    <button class="badge-btn" onclick="openLeaderboard()">🏆 LEADERBOARD</button>
+  </div>
+
+  <div id="leaderboard-modal" onclick="if(event.target === this) closeLeaderboard()">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">🏆 ASTROLEAP MISSION RECORDS</div>
+        <button class="close-btn" onclick="closeLeaderboard()">&times;</button>
+      </div>
+      <table class="score-table">
+        <thead>
+          <tr>
+            <th style="width: 60px;">RANK</th>
+            <th>ASTRONAUT</th>
+            <th style="text-align: right;">HIGH SCORE</th>
+          </tr>
+        </thead>
+        <tbody id="score-rows">
+          <tr><td colspan="3" class="empty-msg">Loading telemetry...</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="badge-btn" style="background:#1e293b; border-color:#475569;" onclick="refreshLeaderboard()">🔄 REFRESH</button>
+        <button class="badge-btn" onclick="closeLeaderboard()">CLOSE</button>
+      </div>
+    </div>
   </div>
 </body>
 </html>

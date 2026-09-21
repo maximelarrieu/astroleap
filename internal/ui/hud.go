@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image/color"
+	"strconv"
 	"strings"
 
 	"astroleap/internal/assets"
@@ -53,8 +54,8 @@ func drawTextRaw(screen *ebiten.Image, str string, startX, startY int, col color
 	}
 }
 
-// DrawHUD draws the top status bar (hearts, score, sector, crystals, medals, timer, thruster fuel, active weapon).
-func DrawHUD(screen *ebiten.Image, health int, maxHealth int, crystals int, score int, fuel float64, maxFuel float64, activeWeapon int, hasMultipleWeapons bool, sector int, elapsedTime float64, medals int) {
+// DrawHUD draws the top status bar (hearts, score, sector, crystals, medals, timer, thruster fuel, active weapon, key/repair status).
+func DrawHUD(screen *ebiten.Image, health int, maxHealth int, crystals int, score int, fuel float64, maxFuel float64, activeWeapon int, hasMultipleWeapons bool, sector int, elapsedTime float64, medals int, hasKey bool, repairCores int) {
 	atlas := assets.Get()
 
 	// 1. Health (Top-Left)
@@ -72,34 +73,51 @@ func DrawHUD(screen *ebiten.Image, health int, maxHealth int, crystals int, scor
 	scoreStr := formatScore(score)
 	DrawText(screen, scoreStr, 36, 7, color.RGBA{240, 240, 255, 255})
 
-	// 3. Sector Indicator (e.g. "SEC 1/3")
-	secDigit := '1'
-	if sector >= 1 && sector <= 3 {
-		secDigit = rune('0' + sector)
-	}
-	secStr := "S" + string(secDigit) + "/3"
+	// 3. Sector Indicator (e.g. "S1/5" .. "S5/5")
+	secStr := "S" + strconv.Itoa(sector) + "/5"
 	DrawText(screen, secStr, 76, 7, color.RGBA{255, 215, 60, 255})
 
 	// 4. Energy Crystals (Top-Center)
 	crystalOp := &ebiten.DrawImageOptions{}
-	crystalOp.GeoM.Translate(108, 3)
+	crystalOp.GeoM.Translate(104, 3)
 	screen.DrawImage(atlas.Crystals[0], crystalOp)
 	crystStr := "X" + formatTwoDigits(crystals)
-	DrawText(screen, crystStr, 124, 7, color.RGBA{100, 245, 255, 255})
+	DrawText(screen, crystStr, 120, 7, color.RGBA{100, 245, 255, 255})
 
-	// 5. Secret Medals (M: X/3)
-	medDigit := rune('0' + medals)
-	if medals < 0 {
-		medDigit = '0'
-	} else if medals > 3 {
-		medDigit = '3'
+	// 5. Secret Medals (M: X)
+	medStr := "M:" + strconv.Itoa(medals)
+	DrawText(screen, medStr, 144, 7, color.RGBA{255, 205, 50, 255})
+
+	// 6. Sector-Specific Objectives or Speedrun Timer
+	if sector == 4 {
+		// Sector 4: Keycard indicator
+		if hasKey {
+			if atlas.IconKey != nil {
+				opKey := &ebiten.DrawImageOptions{}
+				opKey.GeoM.Translate(168, 5)
+				screen.DrawImage(atlas.IconKey, opKey)
+			}
+			DrawText(screen, "KEY", 178, 7, color.RGBA{255, 225, 60, 255})
+		} else {
+			DrawText(screen, "NO KEY", 168, 7, color.RGBA{130, 140, 160, 255})
+		}
+		timeStr := formatTimer(elapsedTime)
+		DrawText(screen, timeStr, 206, 7, color.RGBA{180, 210, 240, 255})
+	} else if sector == 5 {
+		// Sector 5: Repair Cores indicator
+		repStr := "REP:" + strconv.Itoa(repairCores) + "/3"
+		repCol := color.RGBA{255, 180, 50, 255}
+		if repairCores >= 3 {
+			repCol = color.RGBA{80, 255, 120, 255}
+		}
+		DrawText(screen, repStr, 164, 7, repCol)
+		timeStr := formatTimer(elapsedTime)
+		DrawText(screen, timeStr, 206, 7, color.RGBA{180, 210, 240, 255})
+	} else {
+		// Standard live speedrun timer
+		timeStr := formatTimer(elapsedTime)
+		DrawText(screen, timeStr, 186, 7, color.RGBA{200, 230, 255, 255})
 	}
-	medStr := "M:" + string(medDigit) + "/3"
-	DrawText(screen, medStr, 150, 7, color.RGBA{255, 205, 50, 255})
-
-	// 6. Live Speedrun Timer (MM:SS)
-	timeStr := formatTimer(elapsedTime)
-	DrawText(screen, timeStr, 192, 7, color.RGBA{200, 230, 255, 255})
 
 	// 7. Jetpack Thruster Fuel Gauge (Top-Right)
 	// Fuel icon

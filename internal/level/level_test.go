@@ -38,6 +38,18 @@ func TestLoadAllSectors(t *testing.T) {
 		if !lvl.IsSolid(2, 9) {
 			t.Errorf("sector %d landing spawn ground (2, 9) not solid", sector)
 		}
+
+		if len(lvl.CrumblingPlatforms) == 0 {
+			t.Errorf("sector %d has no crumbling platforms", sector)
+		}
+
+		if len(lvl.HealthPickups) == 0 {
+			t.Errorf("sector %d has no health pickups", sector)
+		}
+
+		if len(lvl.BoostPickups) == 0 {
+			t.Errorf("sector %d has no boost pickups", sector)
+		}
 	}
 }
 
@@ -75,6 +87,60 @@ func TestSectorThemesAndWeapons(t *testing.T) {
 	s3 := LoadLevel(3)
 	if s3.Theme != "ice" || s3.Celestial != "jupiter" {
 		t.Errorf("sector 3 unexpected theme/celestial: %s/%s", s3.Theme, s3.Celestial)
+	}
+
+	s4 := LoadLevel(4)
+	if s4.Theme != "vessel" || s4.GoalKind != "airlock" {
+		t.Errorf("sector 4 unexpected theme/goal: %s/%s", s4.Theme, s4.GoalKind)
+	}
+	if s4.SecurityKey == nil {
+		t.Errorf("sector 4 missing SecurityKey")
+	}
+
+	s5 := LoadLevel(5)
+	if s5.Theme != "reactor" || s5.GoalKind != "warp_console" {
+		t.Errorf("sector 5 unexpected theme/goal: %s/%s", s5.Theme, s5.GoalKind)
+	}
+	if len(s5.RepairCores) != 3 {
+		t.Errorf("sector 5 expected 3 repair cores, got %d", len(s5.RepairCores))
+	}
+}
+
+func TestMovingPlatformsDoNotOverlapSolidTiles(t *testing.T) {
+	for sector := 1; sector <= MaxLevels; sector++ {
+		lvl := LoadLevel(sector)
+		for idx, mp := range lvl.MovingPlatforms {
+			// Check bounding box along travel from Start to End
+			minX := int(mp.StartX / float64(TileSize))
+			maxX := int((mp.EndX + mp.W - 0.001) / float64(TileSize))
+			if minX > maxX {
+				minX, maxX = maxX, minX
+			}
+			minY := int(mp.StartY / float64(TileSize))
+			maxY := int((mp.EndY + mp.H - 0.001) / float64(TileSize))
+			if minY > maxY {
+				minY, maxY = maxY, minY
+			}
+
+			for y := minY; y <= maxY; y++ {
+				for x := minX; x <= maxX; x++ {
+					if lvl.IsSolid(x, y) {
+						t.Errorf("sector %d moving platform %d at lane (%d..%d, %d..%d) overlaps solid tile at (%d, %d)",
+							sector, idx, minX, maxX, minY, maxY, x, y)
+					}
+				}
+			}
+
+			// Check that crumbling platforms do not overlap moving platforms
+			for cIdx, cp := range lvl.CrumblingPlatforms {
+				cpX := float64(cp.TileX * TileSize)
+				cpY := float64(cp.TileY * TileSize)
+				// Check horizontal and vertical range
+				if (cpX+cp.W > mp.StartX && cpX < mp.EndX+mp.W) && (cpY+cp.H > mp.StartY && cpY < mp.EndY+mp.H) {
+					t.Errorf("sector %d moving platform %d overlaps crumbling platform %d at (%f, %f)", sector, idx, cIdx, cpX, cpY)
+				}
+			}
+		}
 	}
 }
 

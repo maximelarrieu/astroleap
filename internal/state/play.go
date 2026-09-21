@@ -28,10 +28,21 @@ type PlayState struct {
 
 	floatingTexts   []*entity.FloatingText
 	movingPlatforms []*entity.MovingPlatform
+	ridingPlatform  *entity.MovingPlatform
 	geysers         []*entity.CryoGeyser
 	medals          []*entity.GoldMedal
 	medalsCollected int
 	elapsedTime     float64
+
+	securityKey      *entity.SecurityKey
+	hasSecurityKey   bool
+	repairCores      []*entity.RepairCore
+	repairCoresCount int
+
+	crumblingPlatforms []*entity.CrumblingPlatform
+	healthPickups      []*entity.HealthPickup
+	boostPickups       []*entity.ThrusterBoostPickup
+	hitStopTimer       float64
 
 	boss            *entity.Boss
 	bossProjectiles []*entity.BossProjectile
@@ -135,12 +146,77 @@ func NewPlayStateWithRecords(m *Machine, sector int, score int, crystals int, ca
 		))
 	}
 
+	// Spawn Fragile Crumbling Platforms from level template
+	for _, cp := range ps.lvl.CrumblingPlatforms {
+		ps.crumblingPlatforms = append(ps.crumblingPlatforms, entity.NewCrumblingPlatform(
+			float64(cp.TileX*level.TileSize),
+			float64(cp.TileY*level.TileSize),
+			cp.W,
+			cp.H,
+		))
+	}
+
+	// Spawn Oxygen Health Canisters from level template
+	for _, hp := range ps.lvl.HealthPickups {
+		ps.healthPickups = append(ps.healthPickups, entity.NewHealthPickup(
+			float64(hp.TileX*level.TileSize),
+			float64(hp.TileY*level.TileSize),
+		))
+	}
+
+	// Spawn Ion Thruster Boost Cores from level template
+	for _, bp := range ps.lvl.BoostPickups {
+		ps.boostPickups = append(ps.boostPickups, entity.NewThrusterBoostPickup(
+			float64(bp.TileX*level.TileSize),
+			float64(bp.TileY*level.TileSize),
+		))
+	}
+
+	// Spawn Security Keycard if level features one (Sector 4)
+	if ps.lvl.SecurityKey != nil {
+		ps.securityKey = entity.NewSecurityKey(
+			float64(ps.lvl.SecurityKey.TileX*level.TileSize),
+			float64(ps.lvl.SecurityKey.TileY*level.TileSize),
+		)
+	}
+
+	// Spawn Reactor Repair Cores if level features them (Sector 5)
+	for _, rc := range ps.lvl.RepairCores {
+		ps.repairCores = append(ps.repairCores, entity.NewRepairCore(
+			rc.Index,
+			rc.Name,
+			float64(rc.TileX*level.TileSize),
+			float64(rc.TileY*level.TileSize),
+		))
+	}
+
 	// Spawn Boss Overlord Mech if level features a boss encounter
 	if ps.lvl.HasBoss {
 		ps.boss = entity.NewBoss(ps.lvl.BossX, ps.lvl.BossY)
 	}
 
 	return ps
+}
+
+func (s *PlayState) isPlayerBlocked(x, y float64) bool {
+	boxX := x + 2.0
+	boxY := y + 1.0
+	boxW := entity.PlayerWidth
+	boxH := entity.PlayerHeight
+
+	minTX := int(boxX / float64(level.TileSize))
+	maxTX := int((boxX + boxW - 0.001) / float64(level.TileSize))
+	minTY := int(boxY / float64(level.TileSize))
+	maxTY := int((boxY + boxH - 0.001) / float64(level.TileSize))
+
+	for ty := minTY; ty <= maxTY; ty++ {
+		for tx := minTX; tx <= maxTX; tx++ {
+			if s.lvl.IsSolid(tx, ty) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (s *PlayState) SpawnFloatingText(text string, x, y float64, col color.RGBA) {
@@ -181,6 +257,31 @@ func (s *PlayState) Update(dt float64) {
 
 	if s.paused {
 		return
+	}
+
+	// Hit-Stop micro-pause (freezes gameplay frames on impact for mechanical punch)
+	if s.hitStopTimer > 0 {
+		s.hitStopTimer -= dt
+		if s.shakeTimer > 0 {
+			s.shakeTimer -= dt
+		}
+		return
+	}
+
+	// 0. Update Moving Platforms FIRST and carry riding player
+	for _, mp := range s.movingPlatforms {
+		mp.Update(dt)
+	}
+
+	if s.ridingPlatform != nil {
+		newPX := s.player.X + s.ridingPlatform.DX
+		if !s.isPlayerBlocked(newPX, s.player.Y) {
+			s.player.X = newPX
+		}
+		newPY := s.player.Y + s.ridingPlatform.DY
+		if !s.isPlayerBlocked(s.player.X, newPY) {
+			s.player.Y = newPY
+		}
 	}
 
 	// 1. Update Player & Timer
@@ -242,21 +343,40 @@ func (s *PlayState) Update(dt float64) {
 		}
 	}
 
-	// 2c. Update Moving Platforms & Carriage Physics
+	// 2c. Update Moving Platforms Top Landing & Snap
+	s.ridingPlatform = nil
+	playerRect = s.player.GetRect()
+	playerFeet := s.player.Y + entity.PlayerHeight
 	for _, mp := range s.movingPlatforms {
-		mp.Update(dt)
 		platRect := mp.GetRect()
-
-		// Feet collision and carriage
-		playerFeet := s.player.Y + entity.PlayerHeight
 		if playerRect.X+playerRect.W > platRect.X && playerRect.X < platRect.X+platRect.W {
-			if playerFeet >= platRect.Y-1.0 && playerFeet <= platRect.Y+7.0 && s.player.VY >= 0 {
+			if s.player.VY >= 0 && playerFeet >= platRect.Y-2.0 && playerFeet <= platRect.Y+8.0 {
 				s.player.Y = platRect.Y - entity.PlayerHeight
 				s.player.VY = 0
 				s.player.OnGround = true
 				s.player.StompCombo = 0
-				s.player.X += mp.DX
-				s.player.Y += mp.DY
+				s.ridingPlatform = mp
+				break
+			}
+		}
+	}
+
+	// 2c-2. Update Fragile Crumbling Platforms
+	for _, cp := range s.crumblingPlatforms {
+		cp.Update(dt)
+		cRect := cp.GetRect()
+		if cRect.IsEmpty() {
+			continue
+		}
+		playerFeet := s.player.Y + entity.PlayerHeight
+		if playerRect.X+playerRect.W > cRect.X && playerRect.X < cRect.X+cRect.W {
+			if playerFeet >= cRect.Y-1.0 && playerFeet <= cRect.Y+7.0 && s.player.VY >= 0 {
+				cp.Touch()
+				s.player.Y = cRect.Y - entity.PlayerHeight
+				s.player.VY = 0
+				s.player.OnGround = true
+				s.player.StompCombo = 0
+				s.ridingPlatform = nil
 			}
 		}
 	}
@@ -284,6 +404,77 @@ func (s *PlayState) Update(dt float64) {
 			s.unlockBannerTimer = 2.8
 			s.score += 500
 			s.SpawnFloatingText("+500", pk.X, pk.Y-4, color.RGBA{255, 215, 60, 255})
+		}
+	}
+
+	// 3b. Update Oxygen Health Canisters
+	for _, hp := range s.healthPickups {
+		hp.Update(dt)
+		if !hp.Collected && playerRect.Overlaps(hp.GetRect()) {
+			if s.player.Heal(1) {
+				hp.Collected = true
+				audio.Get().PlayPowerup()
+				s.particles.SpawnCrystalSparkles(hp.X+8, hp.Y+8)
+				s.score += 200
+				s.SpawnFloatingText("+1 O2 HEALTH", hp.X-8, hp.Y-6, color.RGBA{60, 230, 255, 255})
+			}
+		}
+	}
+
+	// 3c. Update Ion Thruster Boost Cores
+	for _, bp := range s.boostPickups {
+		bp.Update(dt)
+		if !bp.Collected && playerRect.Overlaps(bp.GetRect()) {
+			bp.Collected = true
+			s.player.ApplyBoost(5.0) // 5 seconds of infinite supercharged fuel
+			audio.Get().PlayPowerup()
+			s.particles.SpawnCrystalSparkles(bp.X+8, bp.Y+8)
+			s.score += 300
+			s.TriggerShake(2.0, 0.12)
+			s.SpawnFloatingText("ION BOOST 5s!", bp.X-10, bp.Y-6, color.RGBA{255, 190, 40, 255})
+		}
+	}
+
+	// 3d. Update Security Keycard (Sector 4)
+	if s.securityKey != nil && !s.securityKey.Collected {
+		s.securityKey.Update(dt)
+		if playerRect.Overlaps(s.securityKey.GetRect()) {
+			s.securityKey.Collected = true
+			s.hasSecurityKey = true
+			s.score += 500
+			audio.Get().PlayPowerup()
+			s.particles.SpawnCrystalSparkles(s.securityKey.X+8, s.securityKey.Y+8)
+			s.TriggerShake(2.5, 0.14)
+			s.unlockBannerText = "SECURITY KEY ACQUIRED! AIRLOCK UNLOCKED!"
+			s.unlockBannerTimer = 3.0
+			s.SpawnFloatingText("KEY ACQUIRED! +500", s.securityKey.X-16, s.securityKey.Y-6, color.RGBA{255, 220, 50, 255})
+		}
+	}
+
+	// 3e. Update Reactor Repair Cores (Sector 5)
+	for _, rc := range s.repairCores {
+		if !rc.Collected {
+			rc.Update(dt)
+			if playerRect.Overlaps(rc.GetRect()) {
+				rc.Collected = true
+				s.repairCoresCount++
+				s.score += 500
+				audio.Get().PlayPowerup()
+				s.particles.SpawnCrystalSparkles(rc.X+8, rc.Y+8)
+				s.TriggerShake(3.0, 0.16)
+				if s.repairCoresCount == 1 {
+					s.unlockBannerText = "REPAIR 1/3: COOLANT SYSTEM ONLINE!"
+					s.SpawnFloatingText("COOLANT RESTORED! +500", rc.X-20, rc.Y-6, color.RGBA{100, 240, 255, 255})
+				} else if s.repairCoresCount == 2 {
+					s.unlockBannerText = "REPAIR 2/3: PLASMA STABILIZER ONLINE!"
+					s.SpawnFloatingText("STABILIZER ONLINE! +500", rc.X-20, rc.Y-6, color.RGBA{255, 180, 50, 255})
+				} else {
+					s.score += 500 // 1000 total for final core
+					s.unlockBannerText = "SHIP REPAIRED! WARP DRIVE ENGAGED!"
+					s.SpawnFloatingText("WARP DRIVE READY! +1000", rc.X-24, rc.Y-6, color.RGBA{80, 255, 120, 255})
+				}
+				s.unlockBannerTimer = 3.2
+			}
 		}
 	}
 
@@ -323,9 +514,11 @@ func (s *PlayState) Update(dt float64) {
 				}
 				if s.boss.TakeDamage(dmg, s.particles) {
 					s.TriggerShake(3.5, 0.14)
+					s.hitStopTimer = 0.04
 					if s.boss.Dead {
 						s.score += 5000
 						s.TriggerShake(7.0, 0.4)
+						s.hitStopTimer = 0.10
 						s.SpawnFloatingText("OVERLORD DOWN! +5000", s.boss.X-16, s.boss.Y-10, color.RGBA{255, 60, 80, 255})
 					} else {
 						s.SpawnFloatingText(fmt.Sprintf("HIT! -%d", dmg), s.boss.X+6, s.boss.Y-6, color.RGBA{255, 200, 80, 255})
@@ -365,7 +558,8 @@ func (s *PlayState) Update(dt float64) {
 				stompScore := 200 * combo
 				s.score += stompScore
 				s.TriggerShake(2.0, 0.10)
-				audio.Get().PlayStomp()
+				s.hitStopTimer = 0.05
+				audio.Get().PlayStompCombo(combo)
 				s.particles.SpawnStompBurst(e.X+8, e.Y+8)
 				if combo > 1 {
 					s.SpawnFloatingText(fmt.Sprintf("COMBO x%d! +%d", combo, stompScore), e.X-8, e.Y-6, color.RGBA{255, 225, 40, 255})
@@ -395,9 +589,12 @@ func (s *PlayState) Update(dt float64) {
 				s.boss.TakeDamage(2, s.particles)
 				s.player.Bounce()
 				s.TriggerShake(4.0, 0.15)
+				s.hitStopTimer = 0.06
+				audio.Get().PlayStompCombo(3)
 				if s.boss.Dead {
 					s.score += 5000
 					s.TriggerShake(7.0, 0.4)
+					s.hitStopTimer = 0.12
 					s.SpawnFloatingText("OVERLORD DOWN! +5000", s.boss.X-16, s.boss.Y-10, color.RGBA{255, 60, 80, 255})
 				} else {
 					s.SpawnFloatingText("CRITICAL STOMP! -2", s.boss.X-8, s.boss.Y-6, color.RGBA{255, 220, 60, 255})
@@ -449,25 +646,45 @@ func (s *PlayState) Update(dt float64) {
 	}
 	s.floatingTexts = aliveTexts
 
-	// 6. Check Goal: Escape Lander Reached (Locked if Sector Boss is active)
+	// 6. Check Goal: Escape Lander, Airlock, or Warp Console Reached
 	landerLocked := s.lvl.HasBoss && s.boss != nil && !s.boss.Dead
-	if !landerLocked && playerRect.Overlaps(s.lvl.GetLanderRect()) {
-		audio.Get().PlayWin()
-		s.score += 1000 + s.player.Health*500
-		s.SpawnFloatingText("SECTOR SECURED! +1000", s.player.X-12, s.player.Y-8, color.RGBA{100, 255, 120, 255})
-		if s.currentSector < level.MaxLevels {
-			s.machine.Change(NewSectorClearStateWithRecords(s.machine, s.currentSector, s.score, s.crystalsCollected, s.player, s.elapsedTime, s.medalsCollected))
-		} else {
-			s.machine.Change(NewWinStateWithRecords(s.machine, s.score, s.crystalsCollected, s.elapsedTime, s.medalsCollected))
+	if playerRect.Overlaps(s.lvl.GetLanderRect()) {
+		if s.lvl.GoalKind == "airlock" && !s.hasSecurityKey {
+			// Sector 4: Key required
+			s.player.X = s.lvl.LanderX - 22
+			s.SpawnFloatingText("AIRLOCK LOCKED - KEY REQUIRED!", s.player.X-24, s.player.Y-8, color.RGBA{255, 70, 70, 255})
+			s.TriggerShake(1.5, 0.10)
+		} else if s.lvl.GoalKind == "warp_console" && s.repairCoresCount < 3 {
+			// Sector 5: 3 Cores required
+			s.player.X = s.lvl.LanderX - 22
+			s.SpawnFloatingText(fmt.Sprintf("REPAIR CORES NEEDED (%d/3)!", s.repairCoresCount), s.player.X-28, s.player.Y-8, color.RGBA{255, 160, 50, 255})
+			s.TriggerShake(1.5, 0.10)
+		} else if !landerLocked {
+			audio.Get().PlayWin()
+			s.score += 1000 + s.player.Health*500
+			clearMsg := "SECTOR SECURED! +1000"
+			if s.lvl.GoalKind == "airlock" {
+				clearMsg = "AIRLOCK CLEARED! +1000"
+			} else if s.lvl.GoalKind == "warp_console" {
+				clearMsg = "WARP DRIVE ENGAGED! +2000"
+				s.score += 1000
+			}
+			s.SpawnFloatingText(clearMsg, s.player.X-16, s.player.Y-8, color.RGBA{100, 255, 120, 255})
+			if s.currentSector < level.MaxLevels {
+				s.machine.Change(NewSectorClearStateWithRecords(s.machine, s.currentSector, s.score, s.crystalsCollected, s.player, s.elapsedTime, s.medalsCollected))
+			} else {
+				s.machine.Change(NewWinStateWithRecords(s.machine, s.score, s.crystalsCollected, s.elapsedTime, s.medalsCollected))
+			}
+			return
 		}
-		return
 	}
 
 	// 7. Update Particles
 	s.particles.Update(dt)
 
-	// 8. Smooth Camera Tracking
-	targetCamX := s.player.X - 160.0 + 8.0
+	// 8. Smooth Camera Tracking with Dynamic Velocity Lookahead
+	lookahead := s.player.VX * 18.0
+	targetCamX := s.player.X - 160.0 + 8.0 + lookahead
 	maxCamX := float64(s.lvl.Width*level.TileSize - 320)
 	if maxCamX < 0 {
 		maxCamX = 0
@@ -503,9 +720,36 @@ func (s *PlayState) Draw(screen *ebiten.Image) {
 		}
 	}
 
+	// Sector 4: Airlock Security Barrier (Active until Keycard is found)
+	if s.lvl.GoalKind == "airlock" && !s.hasSecurityKey {
+		landerRect := s.lvl.GetLanderRect()
+		lsx := landerRect.X - effCamX
+		if lsx > -40 && lsx < 330 {
+			vector.DrawFilledRect(screen, float32(lsx-3), float32(landerRect.Y-3), float32(landerRect.W+6), float32(landerRect.H+6), color.RGBA{255, 30, 60, 120}, false)
+			vector.StrokeRect(screen, float32(lsx-3), float32(landerRect.Y-3), float32(landerRect.W+6), float32(landerRect.H+6), 1, color.RGBA{255, 90, 120, 240}, false)
+			ui.DrawText(screen, "LOCKED", int(lsx-4), int(landerRect.Y-9), color.RGBA{255, 80, 80, 255})
+		}
+	}
+
+	// Sector 5: Warp Engine Containment Shield (Active until all 3 cores repaired)
+	if s.lvl.GoalKind == "warp_console" && s.repairCoresCount < 3 {
+		landerRect := s.lvl.GetLanderRect()
+		lsx := landerRect.X - effCamX
+		if lsx > -40 && lsx < 330 {
+			vector.DrawFilledRect(screen, float32(lsx-3), float32(landerRect.Y-3), float32(landerRect.W+6), float32(landerRect.H+6), color.RGBA{255, 140, 30, 120}, false)
+			vector.StrokeRect(screen, float32(lsx-3), float32(landerRect.Y-3), float32(landerRect.W+6), float32(landerRect.H+6), 1, color.RGBA{255, 200, 80, 240}, false)
+			ui.DrawText(screen, fmt.Sprintf("%d/3 CORES", s.repairCoresCount), int(lsx-10), int(landerRect.Y-9), color.RGBA{255, 190, 50, 255})
+		}
+	}
+
 	// 2b. Moving Platforms
 	for _, mp := range s.movingPlatforms {
 		mp.Draw(screen, effCamX)
+	}
+
+	// 2b-2. Fragile Crumbling Platforms
+	for _, cp := range s.crumblingPlatforms {
+		cp.Draw(screen, effCamX)
 	}
 
 	// 2c. Cryo Geysers
@@ -516,6 +760,24 @@ func (s *PlayState) Draw(screen *ebiten.Image) {
 	// 2d. Secret Medals
 	for _, m := range s.medals {
 		m.Draw(screen, effCamX)
+	}
+
+	// 2e. Pickups (Oxygen & Ion Cores)
+	for _, hp := range s.healthPickups {
+		hp.Draw(screen, effCamX)
+	}
+	for _, bp := range s.boostPickups {
+		bp.Draw(screen, effCamX)
+	}
+
+	// 2f. Security Access Keycard (Sector 4)
+	if s.securityKey != nil {
+		s.securityKey.Draw(screen, effCamX)
+	}
+
+	// 2g. Reactor Repair Cores (Sector 5)
+	for _, rc := range s.repairCores {
+		rc.Draw(screen, effCamX)
 	}
 
 	// 3. Crystals
@@ -557,9 +819,16 @@ func (s *PlayState) Draw(screen *ebiten.Image) {
 		ft.Draw(screen, effCamX)
 	}
 
-	// 9. Top HUD (Health, Score, Crystals, Medals, Timer, Fuel, Active Weapon)
+	// 9. Top HUD (Health, Score, Crystals, Medals, Timer, Fuel, Active Weapon, Key/Cores)
 	hasMultiple := s.player.HasLaser && s.player.HasNova
-	ui.DrawHUD(screen, s.player.Health, entity.MaxHealth, s.crystalsCollected, s.score, s.player.Fuel, entity.MaxFuel, int(s.player.ActiveWeapon), hasMultiple, s.currentSector, s.elapsedTime, s.medalsCollected)
+	ui.DrawHUD(screen, s.player.Health, entity.MaxHealth, s.crystalsCollected, s.score, s.player.Fuel, entity.MaxFuel, int(s.player.ActiveWeapon), hasMultiple, s.currentSector, s.elapsedTime, s.medalsCollected, s.hasSecurityKey, s.repairCoresCount)
+
+	// Active Ion Thruster Boost Badge
+	if s.player.BoostTimer > 0 {
+		vector.DrawFilledRect(screen, 240, 20, 75, 11, color.RGBA{45, 25, 10, 220}, false)
+		vector.StrokeRect(screen, 240, 20, 75, 11, 1, color.RGBA{255, 180, 30, 255}, false)
+		ui.DrawText(screen, fmt.Sprintf("BOOST %.1fs", s.player.BoostTimer), 244, 23, color.RGBA{255, 215, 60, 255})
+	}
 
 	// Boss Overlord Health Bar UI
 	if s.boss != nil && !s.boss.Dead {

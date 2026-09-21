@@ -79,4 +79,123 @@ func TestSectorClearState(t *testing.T) {
 	if scs3.sectorName != "EUROPA ICE CORE" {
 		t.Errorf("expected sector name EUROPA ICE CORE, got %s", scs3.sectorName)
 	}
+
+	scs4 := NewSectorClearState(m, 4, 3500, 32, p)
+	if scs4.sectorName != "MOTHERSHIP CORRIDOR" {
+		t.Errorf("expected sector name MOTHERSHIP CORRIDOR, got %s", scs4.sectorName)
+	}
+}
+
+func TestPlayStateHazardsAndPickups(t *testing.T) {
+	m := NewMachine(nil)
+	ps := NewPlayStateWithProgress(m, 1, 0, 0, nil)
+
+	if len(ps.crumblingPlatforms) == 0 {
+		t.Errorf("expected sector 1 to have crumbling platforms initialized")
+	}
+	if len(ps.healthPickups) == 0 {
+		t.Errorf("expected sector 1 to have health pickups initialized")
+	}
+	if len(ps.boostPickups) == 0 {
+		t.Errorf("expected sector 1 to have boost pickups initialized")
+	}
+}
+
+func TestSector4KeyAndAirlockMechanic(t *testing.T) {
+	m := NewMachine(nil)
+	ps := NewPlayStateWithProgress(m, 4, 1000, 10, nil)
+
+	if ps.securityKey == nil {
+		t.Fatalf("expected sector 4 to have security key")
+	}
+	if ps.hasSecurityKey {
+		t.Errorf("hasSecurityKey should start false")
+	}
+
+	// Move player to key
+	ps.player.X = ps.securityKey.X
+	ps.player.Y = ps.securityKey.Y
+	ps.player.VY = 0
+
+	ps.Update(0.016)
+
+	if !ps.hasSecurityKey {
+		t.Errorf("expected hasSecurityKey to become true after overlap")
+	}
+	if !ps.securityKey.Collected {
+		t.Errorf("expected securityKey.Collected to be true")
+	}
+}
+
+func TestSector5RepairCoreMechanic(t *testing.T) {
+	m := NewMachine(nil)
+	ps := NewPlayStateWithProgress(m, 5, 2000, 20, nil)
+
+	if len(ps.repairCores) != 3 {
+		t.Fatalf("expected 3 repair cores in sector 5, got %d", len(ps.repairCores))
+	}
+	if ps.repairCoresCount != 0 {
+		t.Errorf("expected 0 initial repair cores collected")
+	}
+
+	// Collect first core
+	ps.player.X = ps.repairCores[0].X
+	ps.player.Y = ps.repairCores[0].Y
+	ps.player.VY = 0
+	ps.Update(0.016)
+
+	if ps.repairCoresCount != 1 {
+		t.Errorf("expected 1 repair core collected, got %d", ps.repairCoresCount)
+	}
+
+	// Collect remaining cores
+	ps.repairCores[1].Collected = true
+	ps.repairCores[2].Collected = true
+	ps.repairCoresCount = 3
+
+	// Test reaching goal with all 3 cores
+	ps.player.X = ps.lvl.LanderX
+	ps.player.Y = ps.lvl.LanderY
+	ps.player.VY = 0
+	ps.Update(0.016)
+
+	if _, ok := m.Current().(*WinState); !ok {
+		t.Errorf("expected transition to WinState after repairing all 3 cores, got %T", m.Current())
+	}
+}
+
+func TestMovingPlatformCarriage(t *testing.T) {
+	m := NewMachine(nil)
+	ps := NewPlayStateWithProgress(m, 2, 0, 0, nil)
+
+	if len(ps.movingPlatforms) == 0 {
+		t.Fatalf("expected sector 2 to have moving platform")
+	}
+
+	mp := ps.movingPlatforms[0]
+	// Position player on platform top
+	ps.player.X = mp.X + 4
+	ps.player.Y = mp.Y - entity.PlayerHeight
+	ps.player.VY = 0
+	ps.player.OnGround = true
+
+	// Perform snap
+	ps.Update(0.016)
+
+	if ps.ridingPlatform != mp {
+		t.Errorf("expected player to ride platform, got %+v", ps.ridingPlatform)
+	}
+
+	startX := ps.player.X
+	startY := ps.player.Y
+
+	// Next tick: platform moves, player should be carried
+	ps.Update(0.016)
+
+	if ps.player.X == startX && mp.DX != 0 {
+		t.Errorf("expected player X to move with platform DX")
+	}
+	if ps.player.Y > startY+10 {
+		t.Errorf("player fell through platform: Y=%f startY=%f", ps.player.Y, startY)
+	}
 }

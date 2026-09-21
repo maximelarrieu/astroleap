@@ -93,7 +93,7 @@ func (s *WinState) Draw(screen *ebiten.Image) {
 	vector.StrokeRect(screen, 32, 38, 256, 108, 1, color.RGBA{100, 230, 255, 255}, false)
 
 	ui.DrawText(screen, "MISSION ACCOMPLISHED!", 94, 46, color.RGBA{255, 220, 60, 255})
-	ui.DrawText(screen, "ESCAPE ROCKET LAUNCHED!", 88, 58, color.RGBA{140, 240, 255, 255})
+	ui.DrawText(screen, "WARP DRIVE ENGAGED - SHIP REPAIRED!", 54, 58, color.RGBA{140, 240, 255, 255})
 
 	scoreStr := "FINAL SCORE: " + strconv.Itoa(s.score)
 	ui.DrawText(screen, scoreStr, 56, 72, color.RGBA{255, 255, 255, 255})
@@ -105,7 +105,7 @@ func (s *WinState) Draw(screen *ebiten.Image) {
 	rankStr := "RANK: [" + s.rank + "]"
 	ui.DrawText(screen, rankStr, 196, 72, rankCol)
 
-	statsStr := "CRYSTALS: " + strconv.Itoa(s.crystals) + "   MEDALS: " + strconv.Itoa(s.medals) + "/9"
+	statsStr := "CRYSTALS: " + strconv.Itoa(s.crystals) + "   MEDALS: " + strconv.Itoa(s.medals) + "/15"
 	ui.DrawText(screen, statsStr, 56, 84, color.RGBA{100, 245, 255, 255})
 
 	timeStr := "TOTAL TIME: " + records.FormatTime(s.timeSeconds)

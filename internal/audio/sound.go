@@ -26,6 +26,7 @@ type SoundManager struct {
 	jumpPCM     []byte
 	thrustPCM   []byte
 	stompPCM    []byte
+	stompPCMs   [5][]byte
 	crystalPCM  []byte
 	hurtPCM     []byte
 	winPCM      []byte
@@ -101,7 +102,25 @@ func (s *SoundManager) PlayThrust() {
 }
 
 func (s *SoundManager) PlayStomp() {
-	s.PlaySFX(s.stompPCM, 0.65)
+	s.PlayStompCombo(1)
+}
+
+func (s *SoundManager) PlayStompCombo(combo int) {
+	if s.muted {
+		return
+	}
+	idx := combo - 1
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(s.stompPCMs) {
+		idx = len(s.stompPCMs) - 1
+	}
+	pcm := s.stompPCMs[idx]
+	if len(pcm) == 0 {
+		pcm = s.stompPCM
+	}
+	s.PlaySFX(pcm, 0.65)
 }
 
 func (s *SoundManager) PlayCrystal() {
@@ -224,28 +243,32 @@ func (s *SoundManager) bakeSFX() {
 		s.thrustPCM = encodeStereo16(samples)
 	}
 
-	// 3. Stomp SFX: Punchy low-end thud
+	// 3. Stomp SFX: Escalating pitch punchy low-end thud (combo ladder)
 	{
 		dur := 0.18
 		numSamples := int(float64(SampleRate) * dur)
-		samples := make([][2]float64, numSamples)
-		phase := 0.0
-		for i := 0; i < numSamples; i++ {
-			t := float64(i) / float64(SampleRate)
-			freq := 320.0 * math.Exp(-t*18.0) // Rapid pitch decay
-			phase += 2.0 * math.Pi * freq / float64(SampleRate)
-			env := math.Exp(-t * 14.0)
-			// Square-ish wave for punch
-			sq := math.Sin(phase)
-			if sq > 0 {
-				sq = 1.0
-			} else {
-				sq = -1.0
+		basePitches := []float64{320.0, 392.0, 480.0, 600.0, 750.0}
+		for step, baseFreq := range basePitches {
+			samples := make([][2]float64, numSamples)
+			phase := 0.0
+			for i := 0; i < numSamples; i++ {
+				t := float64(i) / float64(SampleRate)
+				freq := baseFreq * math.Exp(-t*18.0) // Rapid pitch decay
+				phase += 2.0 * math.Pi * freq / float64(SampleRate)
+				env := math.Exp(-t * 14.0)
+				// Square-ish wave for punch
+				sq := math.Sin(phase)
+				if sq > 0 {
+					sq = 1.0
+				} else {
+					sq = -1.0
+				}
+				v := sq * env * 0.65
+				samples[i] = [2]float64{v, v}
 			}
-			v := sq * env * 0.65
-			samples[i] = [2]float64{v, v}
+			s.stompPCMs[step] = encodeStereo16(samples)
 		}
-		s.stompPCM = encodeStereo16(samples)
+		s.stompPCM = s.stompPCMs[0]
 	}
 
 	// 4. Crystal SFX: Sparkly dual-tone bell chime

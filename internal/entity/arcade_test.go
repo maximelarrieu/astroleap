@@ -88,3 +88,48 @@ func TestPlayerStompComboAndFuel(t *testing.T) {
 		t.Errorf("expected combo 2, got %d", p.StompCombo)
 	}
 }
+
+func TestSecurityKey(t *testing.T) {
+	k := NewSecurityKey(60, 80)
+	if k.Collected {
+		t.Errorf("expected security key to start uncollected")
+	}
+	rect := k.GetRect()
+	if rect.W != 12 || rect.H != 12 {
+		t.Errorf("expected 12x12 rect, got %+v", rect)
+	}
+
+	k.Update(0.1)
+	if k.Timer <= 0 {
+		t.Errorf("expected timer to advance")
+	}
+
+	k.Collected = true
+	if !k.GetRect().IsEmpty() {
+		t.Errorf("expected empty rect when collected")
+	}
+}
+
+func TestRepairCore(t *testing.T) {
+	rc := NewRepairCore(1, "COOLANT REGULATOR", 100, 120)
+	if rc.Collected {
+		t.Errorf("expected repair core to start uncollected")
+	}
+	if rc.Name != "COOLANT REGULATOR" || rc.Index != 1 {
+		t.Errorf("unexpected core data: %+v", rc)
+	}
+	rect := rc.GetRect()
+	if rect.W != 12 || rect.H != 12 {
+		t.Errorf("expected 12x12 rect, got %+v", rect)
+	}
+
+	rc.Update(0.1)
+	if rc.Timer <= 0 {
+		t.Errorf("expected timer to advance")
+	}
+
+	rc.Collected = true
+	if !rc.GetRect().IsEmpty() {
+		t.Errorf("expected empty rect when collected")
+	}
+}

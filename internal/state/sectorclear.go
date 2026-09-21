@@ -42,6 +42,10 @@ func NewSectorClearStateWithRecords(m *Machine, sector int, score int, crystals 
 		secName = "PHOBOS RIDGE"
 	} else if sector == 3 {
 		secName = "EUROPA ICE CORE"
+	} else if sector == 4 {
+		secName = "MOTHERSHIP CORRIDOR"
+	} else if sector == 5 {
+		secName = "REACTOR BAY"
 	}
 
 	return &SectorClearState{
@@ -95,14 +99,16 @@ func (s *SectorClearState) Draw(screen *ebiten.Image) {
 		screen.DrawImage(atlas.Earth, celestialOp)
 	} else if s.sector == 2 {
 		screen.DrawImage(atlas.Mars, celestialOp)
-	} else {
+	} else if s.sector == 3 {
 		screen.DrawImage(atlas.Jupiter, celestialOp)
+	} else {
+		screen.DrawImage(atlas.Earth, celestialOp)
 	}
 
 	// Rocket exhaust particles
 	s.particles.Draw(screen, 0)
 
-	// Ascending Lander
+	// Ascending Lander or Shuttle
 	landerOp := &ebiten.DrawImageOptions{}
 	landerOp.GeoM.Translate(144, s.landerY)
 	screen.DrawImage(atlas.Lander, landerOp)
@@ -118,7 +124,7 @@ func (s *SectorClearState) Draw(screen *ebiten.Image) {
 	scoreStr := "TOTAL SCORE: " + strconv.Itoa(s.score)
 	ui.DrawText(screen, scoreStr, 88, 74, color.RGBA{255, 255, 255, 255})
 
-	crystStr := "CRYSTALS: " + strconv.Itoa(s.crystals) + "   MEDALS: " + strconv.Itoa(s.medals) + "/9"
+	crystStr := "CRYSTALS: " + strconv.Itoa(s.crystals) + "   MEDALS: " + strconv.Itoa(s.medals) + "/15"
 	ui.DrawText(screen, crystStr, 76, 86, color.RGBA{100, 245, 255, 255})
 
 	timeStr := "MISSION TIME: " + records.FormatTime(s.elapsedTime)
@@ -127,7 +133,10 @@ func (s *SectorClearState) Draw(screen *ebiten.Image) {
 	if s.timer > 0.8 && math.Sin(s.timer*6.0) > -0.2 {
 		nextSector := s.sector + 1
 		nextPrompt := "PRESS SPACE FOR SECTOR " + strconv.Itoa(nextSector)
-		ui.DrawText(screen, nextPrompt, 76, 122, color.RGBA{255, 200, 80, 255})
+		if nextSector == 5 {
+			nextPrompt = "PRESS SPACE FOR REACTOR BAY"
+		}
+		ui.DrawText(screen, nextPrompt, 68, 122, color.RGBA{255, 200, 80, 255})
 	}
 }
 

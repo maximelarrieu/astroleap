@@ -106,14 +106,13 @@ func FormatTime(seconds float64) string {
 
 // EvaluateRank determines mission completion rank (S, A, B, C).
 func EvaluateRank(score int, timeSeconds float64, medals int) string {
-	// S-Rank: under 3m30s, score >= 12000, or all 9 medals found
-	if (timeSeconds < 210.0 && score >= 12000) || medals >= 9 {
+	if (timeSeconds > 0 && timeSeconds < 360.0 && score >= 12000) || medals >= 9 {
 		return "S"
 	}
-	if timeSeconds < 300.0 && score >= 8000 {
+	if (timeSeconds > 0 && timeSeconds < 480.0 && score >= 8000) || medals >= 6 {
 		return "A"
 	}
-	if timeSeconds < 420.0 && score >= 5000 {
+	if (timeSeconds > 0 && timeSeconds < 600.0 && score >= 5000) || medals >= 3 {
 		return "B"
 	}
 	return "C"
