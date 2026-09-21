@@ -1,107 +1,173 @@
-# Vibe Code a 2D Game with Go and Gemini
+# 🚀 AstroLeap: Lunar Odyssey
 
-> **Note**: The agent skills in this repository will not be updated here. Updated and maintained versions of these skills are available at [skills.danicat.dev](https://skills.danicat.dev)
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org)
+[![Engine](https://img.shields.io/badge/Engine-Ebitengine%20v2-db5858)](https://ebitengine.org)
+[![Platform](https://img.shields.io/badge/Platform-Desktop%20%7C%20WebAssembly-brightgreen)](https://ebitengine.org)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+**AstroLeap: Lunar Odyssey** est un jeu de plateforme 2D rétro en basse gravité développé en Go avec **Ebitengine v2**. 
 
-## Who am I?
+Inspiré des classiques rétro comme *Super Mario Bros*, *Moon Patrol* et les mécaniques de vol de *Jetpack Joyride*, vous incarnez un astronaute explorant des environnements lunaires et extraterrestres hostiles pour réparer un vaisseau mère et rentrer sur Terre.
 
-DISCLAIMER: I AM NOT A GAME DEVELOPER.
+![AstroLeap Logo](logo.png)
 
-<img src="chibi_dani_oops.png" alt="Chibi Dani Oops" width="320" />
+---
 
-I am [Daniela Petruzalek](https://linkedin.com/in/petruzalek), a Developer Relations Engineer at Google. I am the author and facilitator of this workshop. I might not be a game developer, but I am a lifetime gamer and game collector, and enjoy using projects like this to teach modern software engineering concepts like agentic coding, generative AI and other ways to use AI to unlock your creativity!
+## 📖 Présentation du jeu
 
-## Session Overview
+### 🌌 Synopsis & Objectif
+À la suite d'une avarie critique, vous devez traverser 5 secteurs planétaires et stations spatiales abandonnées. Maîtrisez la faible gravité lunaire et votre propulseur dorsal (jetpack), éliminez ou évitez les créatures extraterrestres, ramassez les cristaux d'énergie, découvrez des armes secrètes et activez le moteur de saut supraluminique (*Warp Drive*) pour vous échapper !
 
-After a brief intro of the Gemini model family and the Antigravity coding agent, the participants are invited to build 2D games in Go using Ebitengine v2, using Google Gemini models for coding, image generation (Nano Banana) and audio generation (Lyria 3).
+### 🗺️ Les 5 Secteurs
+1. **Secteur 1 : Avant-poste Lunaire (*Lunar Outpost*)**  
+   Prise en main des sauts flottants en basse gravité, gestion du jetpack, déblocage du **Laser Blaster** et sauvetage initial.
+2. **Secteur 2 : Crête de Phobos (*Phobos Ridge*)**  
+   Canyons martiens escarpés, fosses d'acide, plateformes mobiles synchronisées et déblocage de l'arme secrète **Nova Cannon**.
+3. **Secteur 3 : Cœur de Glace d'Europe (*Europa Ice Core*)**  
+   Cavernes glaciaires d'Europe avec combat de boss contre l'**Overlord Mech**.
+4. **Secteur 4 : Couloir du Vaisseau Mère (*Mothership Corridor*)**  
+   Intérieur d'un vaisseau mère humain en confinement d'urgence. Récupérez la **carte d'accès de sécurité** (*Keycard*) pour déverrouiller le sas blindé.
+5. **Secteur 5 : Salle du Réacteur (*Reactor Bay*)**  
+   Cœur du réacteur en surchauffe critique. Récupérez les **3 cœurs de réparation Warp** à travers les pistons et les cheminées de plasma pour initier le saut de retour vers la Terre !
 
+---
 
-### Design Approach
+## ✨ Fonctionnalités & Mécaniques
 
-The skills and reference modules here are generic building blocks for any 2D game genre—arcade, puzzle, platformer, strategy, RPG, or rhythm games. Snippets like pathfinding, collision, or UI components are modular references that developers and coding agents adapt to fit specific mechanics. Start your session by activating the `/vibe-game-developer` skill and work with Antigravity to build your game!
+- **Physique en basse gravité ($g \approx 0.18$)** : Sauts amples et planés offrant un contrôle aérien précis.
+- **Propulseur dorsal (Jetpack)** : Maintenez le bouton de saut en l'air pour planer et franchir de larges précipices. La jauge de carburant se recharge automatiquement au sol ou via des capsules d'énergie.
+- **Élimination des ennemis & Rebond** : Écrasez les slimes et yeux volants d'un coup de botte bien placé pour rebondir plus haut.
+- **Arsenal d'armes déblocables** :
+  - 🔹 **Laser Blaster** : Rayons photoniques cyan traversant les aliens horizontalement.
+  - 🔸 **Nova Cannon** : Projectiles à ricochet rebondissant sur les murs et le sol.
+  - 🔄 **Changement d'arme à la volée** via une simple touche.
+- **Système de records & Speedrun** :
+  - Sauvegarde automatique locale de vos meilleurs scores et temps (`~/.astroleap_records.json`).
+  - Système d'évaluation de mission (Rangs **S**, **A**, **B**, **C**).
+- **Rendu Rétro Pixel Art 16-bit** : Résolution virtuelle native $320 \times 180$ avec mise à l'échelle plein écran nette, effets de particules procéduraux, parallaxe stellaire et filtre CRT rétro.
+- **Audio & Musique Intégrés** : Synthèse audio procédurale multi-voix et effets sonores générés en temps réel sans dépendance externe.
 
-## Repository Structure
+---
+
+## 🕹️ Contrôles du jeu
+
+Le jeu prend en charge le **clavier**, les **manettes** (Xbox / PlayStation / génériques) ainsi que les **écrans tactiles** (en version Web).
+
+| Action | Clavier | Manette (Gamepad) | Souris / Tactile (Web) |
+| :--- | :--- | :--- | :--- |
+| **Déplacement Gauche / Droite** | `A` / `D` ou `←` / `→` | Stick Gauche / Croix directionnelle | Zones Gauche / Centre |
+| **Saut** | `Espace` / `W` / `↑` | Bouton Sud (`A` / `✕`) | Bouton Droit |
+| **Propulseur (Jetpack)** | Maintenir `Espace` / `W` en l'air | Maintenir Bouton Sud | Maintenir Bouton Droit |
+| **Tir** | `J` / `Z` / `F` / Clic Gauche | Bouton Ouest (`X` / `◻`) | Clic / Tap écran |
+| **Changer d'arme** | `Q` / `Tab` / `E` | Bouton Nord (`Y` / `△`) / `R1` | Tap icône Arme HUD |
+| **Pause** | `Échap` / `P` | Bouton Start | Bouton Pause HUD |
+| **Recommencer** | `R` (sur Game Over) | Select / Back | Tap écran |
+
+---
+
+## 🚀 Démarrage Rapide (Getting Started)
+
+### 📋 Prérequis
+- **Go 1.22 ou supérieur** ([Télécharger Go](https://go.dev/dl/))
+- **Système d'exploitation** : Linux, macOS ou Windows
+- *(Linux uniquement)* : Les bibliothèques graphiques et audio standard (`libasound2-dev`, `libgl1-mesa-dev`, `libxcursor-dev`, etc. généralement déjà présentes sur Ubuntu/Debian/Fedora/Arch).
+
+### 📥 1. Cloner le projet
+
+```bash
+git clone git@github.com:maximelarrieu/astroleap.git
+cd astroleap
+```
+
+Téléchargez les dépendances Go :
+```bash
+go mod download
+```
+
+---
+
+### 🎮 2. Lancer le jeu
+
+Vous avez deux façons de jouer : en **application native desktop** ou dans votre **navigateur web**.
+
+#### Option A : Version Desktop (recommandée)
+
+##### Méthode 1 : Lancement direct
+```bash
+go run ./cmd/game
+```
+
+##### Méthode 2 : Compilation d'un binaire exécutable
+Pour compiler un binaire autonome :
+
+```bash
+# Sur Linux / macOS :
+go build -o astroleap ./cmd/game
+./astroleap
+
+# Sur Windows (PowerShell / CMD) :
+go build -o astroleap.exe ./cmd/game
+.\astroleap.exe
+```
+
+---
+
+#### Option B : Version Web (WebAssembly)
+
+Le jeu fonctionne également dans n'importe quel navigateur moderne grâce à WebAssembly. Un serveur web HTTP léger est inclus dans le projet.
+
+1. **Lancez le serveur local :**
+   ```bash
+   go run ./cmd/server
+   ```
+   *(ou compilez le serveur : `go build -o server ./cmd/server && ./server`)*
+
+2. **Ouvrez votre navigateur :**
+   Rendez-vous sur 👉 **[http://localhost:8080](http://localhost:8080)**
+
+*(Optionnel) Si vous modifiez le code du jeu et souhaitez regénérer le binaire WASM :*
+```bash
+GOOS=js GOARCH=wasm go build -o web/game.wasm ./cmd/game
+```
+
+---
+
+## 🧪 Lancer les tests
+
+Pour exécuter l'ensemble des tests unitaires du projet :
+
+```bash
+go test -v ./...
+```
+
+---
+
+## 📁 Structure du projet
 
 ```text
 .
-├── .agents/
-│   └── skills/                  # Agent skills for game development
-│       ├── vibe-game-developer/ # Request router and orchestrator
-│       ├── ebitengineer/        # Ebitengine v2 architecture and reference modules
-│       ├── game-design/         # GDD generation and interactive game design
-│       ├── godoctor/            # Go linting, formatting, testing, and mutation testing
-│       ├── lyria/               # Music generation using Lyria 3 models
-│       ├── nano-banana/         # Image generation and editing via Nano Banana
-│       ├── procedural-art/      # Pure-code 2D graphics, vector math, and shaders
-│       ├── procedural-composer/ # Pure-code audio synthesis and chiptune sound engine
-│       ├── sprite-animation/    # Sprite sheet slicing, animation states, and Aseprite format
-│       └── swarm-coding/        # Multi-agent task parallelization
-├── check_env.sh                 # Pre-flight environment check script
-└── README.md
+├── cmd/
+│   ├── game/             # Point d'entrée pour la version Desktop native
+│   └── server/           # Serveur HTTP local pour la version WebAssembly
+├── internal/
+│   ├── assets/           # Générateur de sprites, textures et atlas procéduraux
+│   ├── audio/            # Moteur sonore DSP & synthèse de musique de fond
+│   ├── entity/           # Entités : Joueur, Ennemis, Cristaux, Boss, Missiles
+│   ├── game/             # Boucle principale ebiten.Game
+│   ├── input/            # Gestionnaire multi-périphériques (Clavier, Manette, Tactile)
+│   ├── level/            # Niveaux, tuiles et décors en parallaxe
+│   ├── physics/          # Collisions AABB sweep et gravité lunaire
+│   ├── records/          # Persistance des scores et chronos
+│   ├── shaders/          # Shaders Kage (effet tube cathodique CRT)
+│   ├── state/            # Machine à états (Intro, Titre, En jeu, Victoire, Game Over)
+│   └── ui/               # Interface utilisateur, affichage HUD rétro
+├── web/                  # Fichiers statiques WebAssembly (HTML, JS runner, WASM)
+├── GDD.md                # Document de Game Design complet
+└── README.md             # Documentation et guide de démarrage
 ```
 
-## Agent Skills
+---
 
-### Orchestration & Design
+## 📜 Licence
 
-- [`vibe-game-developer`](.agents/skills/vibe-game-developer/SKILL.md)  
-  Routes user requests to the appropriate specialized skill based on the task (architecture, pure-code graphics, AI media generation, testing, or deployment).
-
-- [`game-design`](.agents/skills/game-design/SKILL.md)  
-  Guides game concept interviews via `/grill-me` and generates a structured Game Design Document ([`GDD.md`](.agents/skills/game-design/references/gdd_template.md)).
-
-### Engine Architecture & Pure-Code Assets
-
-- [`ebitengineer`](.agents/skills/ebitengineer/SKILL.md)  
-  Core engineering rules for Ebitengine v2 games: 16:9 pixel-scaling canvas, 60 FPS delta-time loop, scene state machines, WebAssembly builds, and asset validation.  
-  Includes reference guides for [project structure](.agents/skills/ebitengineer/references/project_structure.md), [server architecture](.agents/skills/ebitengineer/references/server_architecture.md), [physics & collisions](.agents/skills/ebitengineer/references/physics_and_collision.md), [tilemaps](.agents/skills/ebitengineer/references/tilemaps_and_levels.md), [UI layout](.agents/skills/ebitengineer/references/ui_and_hud.md), [input mapping](.agents/skills/ebitengineer/references/input_action_mapping.md), [entity pooling](.agents/skills/ebitengineer/references/entity_management.md), and [A* pathfinding](.agents/skills/ebitengineer/references/pathfinding_and_ai.md).
-
-- [`procedural-art`](.agents/skills/procedural-art/SKILL.md)  
-  Code-driven 2D drawing, matrix transformations (`GeoM`), color ramps, particle systems, and Kage shaders.
-
-- [`sprite-animation`](.agents/skills/sprite-animation/SKILL.md)  
-  Sprite sheet validation, grid slicing, animation controllers, Aseprite binary format parsing, and integration with `SolarLune/goaseprite`. Includes Go implementation in [`references/animation_controller.go`](.agents/skills/sprite-animation/references/animation_controller.go) and format reference in [`references/aseprite_format.md`](.agents/skills/sprite-animation/references/aseprite_format.md).
-
-- [`procedural-composer`](.agents/skills/procedural-composer/SKILL.md)  
-  Pure-code DSP synthesis engine, FM synthesis, ADSR envelopes, JSON sound specs, and CLI audio player.
-
-### Generative AI Media Skills
-
-- [`nano-banana`](.agents/skills/nano-banana/SKILL.md)  
-  Image generation using Nano Banana models (`gemini-3.1-flash-lite-image`, `gemini-3.1-flash-image`, `gemini-3-pro-image`, `gemini-2.5-flash-image`). Handles pixel art sprites and character-consistent generation. Run via `uv run .agents/skills/nano-banana/scripts/banana.py`.
-
-- [`lyria`](.agents/skills/lyria/SKILL.md)  
-  44.1 kHz stereo audio generation using Lyria 3 models (`lyria-3-clip-preview` for 30-second loops and `lyria-3-pro-preview` for full tracks). Run via `uv run .agents/skills/lyria/scripts/lyria.py`.
-
-### Quality & Workflow
-
-- [`godoctor`](.agents/skills/godoctor/SKILL.md)  
-  Go code quality enforcement using Google Go Style guidelines, SQL test analysis, and Selene mutation testing.
-
-- [`swarm-coding`](.agents/skills/swarm-coding/SKILL.md)  
-  Decomposes complex engineering features into isolated subtasks for parallel execution.
-
-## Quick Start
-
-### Requirements
-- Go 1.26 or newer
-- `uv` Python package runner
-- Google Cloud SDK (`gcloud`) with Application Default Credentials configured (`gcloud auth application-default login`)
-
-### Environment Pre-Flight Check
-Run the included doctor script to verify all local tools before starting:
-
-```bash
-./check_env.sh
-```
-
-### CLI Tool Verification
-Test the image and music generation CLI utilities:
-
-```bash
-# Verify Nano Banana image CLI
-uv run .agents/skills/nano-banana/scripts/banana.py --help
-
-# Verify Lyria music CLI
-uv run .agents/skills/lyria/scripts/lyria.py --help
-```
+Ce projet est distribué sous licence MIT. Amusez-vous bien dans l'espace ! 🚀🌕

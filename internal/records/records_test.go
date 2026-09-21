@@ -1,6 +1,9 @@
 package records
 
-import "testing"
+import (
+	"sync"
+	"testing"
+)
 
 func TestFormatTime(t *testing.T) {
 	if got := FormatTime(0); got != "--:--.-" {
@@ -39,6 +42,11 @@ func TestEvaluateRank(t *testing.T) {
 }
 
 func TestSubmitRunRecords(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	recordsMu.Lock()
+	recordsOnce = sync.Once{}
+	recordsMu.Unlock()
+
 	res := SubmitRun(15000, 150.0, 7)
 	rec := Get()
 
