@@ -11,6 +11,25 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
+func cleanChar(ch rune) rune {
+	switch ch {
+	case 'É', 'È', 'Ê', 'Ë':
+		return 'E'
+	case 'À', 'Â', 'Ä':
+		return 'A'
+	case 'Î', 'Ï':
+		return 'I'
+	case 'Ô', 'Ö':
+		return 'O'
+	case 'Ù', 'Û', 'Ü':
+		return 'U'
+	case 'Ç':
+		return 'C'
+	default:
+		return ch
+	}
+}
+
 // DrawText draws text using a built-in 5x7 retro bitmap font.
 func DrawText(screen *ebiten.Image, str string, x, y int, col color.RGBA) {
 	str = strings.ToUpper(str)
@@ -26,20 +45,28 @@ func drawTextRaw(screen *ebiten.Image, str string, startX, startY int, col color
 	cx := startX
 	cy := startY
 
-	for _, ch := range str {
-		if ch == '\n' {
+	for _, rawCh := range str {
+		if rawCh == '\n' {
 			cx = startX
 			cy += 9
 			continue
 		}
-		if ch == ' ' {
+		if rawCh == ' ' {
 			cx += 5
 			continue
 		}
 
+		ch := cleanChar(rawCh)
+
 		glyph, ok := fontData[ch]
 		if !ok {
-			glyph = fontData['?']
+			// Only draw '?' if the actual string character was '?'
+			if rawCh == '?' {
+				glyph = fontData['?']
+			} else {
+				cx += 4
+				continue
+			}
 		}
 
 		for row := 0; row < 7; row++ {
@@ -54,14 +81,18 @@ func drawTextRaw(screen *ebiten.Image, str string, startX, startY int, col color
 	}
 }
 
-// DrawHUD draws the top status bar (hearts, score, sector, crystals, medals, timer, thruster fuel, active weapon, key/repair status).
+// DrawHUD draws the top status bar with clear grouping, breathing room, and sharp typography.
 func DrawHUD(screen *ebiten.Image, health int, maxHealth int, crystals int, score int, fuel float64, maxFuel float64, activeWeapon int, hasMultipleWeapons bool, sector int, elapsedTime float64, medals int, hasKey bool, repairCores int) {
 	atlas := assets.Get()
 
-	// 1. Health (Top-Left)
+	// 0. Translucent HUD backdrop strip (Y: 0..16) for clean readability against bright starfields
+	vector.DrawFilledRect(screen, 0, 0, 320, 16, color.RGBA{8, 12, 22, 190}, false)
+	vector.StrokeLine(screen, 0, 16, 320, 16, 1, color.RGBA{45, 60, 95, 140}, false)
+
+	// 1. Health Hearts (X: 8, 18, 28)
 	for i := 0; i < maxHealth; i++ {
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(6+i*9), 6)
+		op.GeoM.Translate(float64(8+i*10), 4)
 		if i < health {
 			screen.DrawImage(atlas.HeartFull, op)
 		} else {
@@ -69,40 +100,43 @@ func DrawHUD(screen *ebiten.Image, health int, maxHealth int, crystals int, scor
 		}
 	}
 
-	// 2. Score
+	// 2. Score (X: 44)
 	scoreStr := formatScore(score)
-	DrawText(screen, scoreStr, 36, 7, color.RGBA{240, 240, 255, 255})
+	DrawText(screen, scoreStr, 44, 5, color.RGBA{240, 240, 255, 255})
 
-	// 3. Sector Indicator (e.g. "S1/5" .. "S5/5")
+	// 3. Sector Indicator (X: 84)
 	secStr := "S" + strconv.Itoa(sector) + "/5"
-	DrawText(screen, secStr, 76, 7, color.RGBA{255, 215, 60, 255})
+	DrawText(screen, secStr, 84, 5, color.RGBA{255, 215, 60, 255})
 
-	// 4. Energy Crystals (Top-Center)
-	crystalOp := &ebiten.DrawImageOptions{}
-	crystalOp.GeoM.Translate(104, 3)
-	screen.DrawImage(atlas.Crystals[0], crystalOp)
+	// 4. Energy Crystals (X: 118 icon, X: 132 count)
+	if atlas.Crystals[0] != nil {
+		crystalOp := &ebiten.DrawImageOptions{}
+		crystalOp.GeoM.Scale(0.75, 0.75)
+		crystalOp.GeoM.Translate(118, 2)
+		screen.DrawImage(atlas.Crystals[0], crystalOp)
+	}
 	crystStr := "X" + formatTwoDigits(crystals)
-	DrawText(screen, crystStr, 120, 7, color.RGBA{100, 245, 255, 255})
+	DrawText(screen, crystStr, 132, 5, color.RGBA{80, 240, 255, 255})
 
-	// 5. Secret Medals (M: X)
+	// 5. Secret Medals (X: 158)
 	medStr := "M:" + strconv.Itoa(medals)
-	DrawText(screen, medStr, 144, 7, color.RGBA{255, 205, 50, 255})
+	DrawText(screen, medStr, 158, 5, color.RGBA{255, 205, 50, 255})
 
-	// 6. Sector-Specific Objectives or Speedrun Timer
+	// 6. Sector Objectives or Speedrun Timer (X: 188..236)
 	if sector == 4 {
 		// Sector 4: Keycard indicator
 		if hasKey {
 			if atlas.IconKey != nil {
 				opKey := &ebiten.DrawImageOptions{}
-				opKey.GeoM.Translate(168, 5)
+				opKey.GeoM.Translate(186, 4)
 				screen.DrawImage(atlas.IconKey, opKey)
 			}
-			DrawText(screen, "KEY", 178, 7, color.RGBA{255, 225, 60, 255})
+			DrawText(screen, "KEY", 196, 5, color.RGBA{255, 225, 60, 255})
 		} else {
-			DrawText(screen, "NO KEY", 168, 7, color.RGBA{130, 140, 160, 255})
+			DrawText(screen, "NO KEY", 186, 5, color.RGBA{130, 140, 160, 255})
 		}
 		timeStr := formatTimer(elapsedTime)
-		DrawText(screen, timeStr, 206, 7, color.RGBA{180, 210, 240, 255})
+		DrawText(screen, timeStr, 226, 5, color.RGBA{180, 210, 240, 255})
 	} else if sector == 5 {
 		// Sector 5: Repair Cores indicator
 		repStr := "REP:" + strconv.Itoa(repairCores) + "/3"
@@ -110,33 +144,29 @@ func DrawHUD(screen *ebiten.Image, health int, maxHealth int, crystals int, scor
 		if repairCores >= 3 {
 			repCol = color.RGBA{80, 255, 120, 255}
 		}
-		DrawText(screen, repStr, 164, 7, repCol)
+		DrawText(screen, repStr, 186, 5, repCol)
 		timeStr := formatTimer(elapsedTime)
-		DrawText(screen, timeStr, 206, 7, color.RGBA{180, 210, 240, 255})
+		DrawText(screen, timeStr, 226, 5, color.RGBA{180, 210, 240, 255})
 	} else {
 		// Standard live speedrun timer
 		timeStr := formatTimer(elapsedTime)
-		DrawText(screen, timeStr, 186, 7, color.RGBA{200, 230, 255, 255})
+		DrawText(screen, timeStr, 196, 5, color.RGBA{190, 225, 255, 255})
 	}
 
-	// 7. Jetpack Thruster Fuel Gauge (Top-Right)
-	// Fuel icon
+	// 7. Jetpack Thruster Fuel Gauge (X: 250..312)
 	iconOp := &ebiten.DrawImageOptions{}
-	iconOp.GeoM.Translate(238, 6)
+	iconOp.GeoM.Translate(250, 4)
 	screen.DrawImage(atlas.ThrusterIcon, iconOp)
 
-	// Fuel bar background & border
-	barX := float32(250)
-	barY := float32(7)
-	barW := float32(62)
+	// Fuel bar
+	barX := float32(260)
+	barY := float32(5)
+	barW := float32(52)
 	barH := float32(6)
 
-	// Background
-	vector.DrawFilledRect(screen, barX, barY, barW, barH, color.RGBA{18, 22, 35, 220}, false)
-	// Outline
-	vector.StrokeRect(screen, barX, barY, barW, barH, 1, color.RGBA{80, 100, 140, 255}, false)
+	vector.DrawFilledRect(screen, barX, barY, barW, barH, color.RGBA{14, 18, 30, 220}, false)
+	vector.StrokeRect(screen, barX, barY, barW, barH, 1, color.RGBA{70, 90, 130, 255}, false)
 
-	// Fill proportion
 	ratio := float32(fuel / maxFuel)
 	if ratio < 0 {
 		ratio = 0
@@ -146,16 +176,16 @@ func DrawHUD(screen *ebiten.Image, health int, maxHealth int, crystals int, scor
 
 	fillW := (barW - 2) * ratio
 	if fillW > 0 {
-		fillColor := color.RGBA{60, 220, 255, 255}
+		fillColor := color.RGBA{50, 220, 255, 255}
 		if ratio < 0.25 {
-			fillColor = color.RGBA{255, 70, 60, 255} // Red warning
+			fillColor = color.RGBA{255, 60, 50, 255} // Red warning
 		} else if ratio < 0.5 {
-			fillColor = color.RGBA{255, 190, 40, 255} // Orange
+			fillColor = color.RGBA{255, 180, 30, 255} // Orange
 		}
 		vector.DrawFilledRect(screen, barX+1, barY+1, fillW, barH-2, fillColor, false)
 	}
 
-	// 5. Active Weapon Indicator (Below Health, X: 8, Y: 18)
+	// 8. Active Weapon Indicator (Clean floating badge, Y: 18)
 	if activeWeapon > 0 {
 		var icon *ebiten.Image
 		wName := ""
@@ -169,15 +199,22 @@ func DrawHUD(screen *ebiten.Image, health int, maxHealth int, crystals int, scor
 			wCol = color.RGBA{255, 200, 40, 255}
 		}
 
+		badgeW := float32(78)
+		if hasMultipleWeapons {
+			badgeW = float32(118)
+		}
+		vector.DrawFilledRect(screen, 6, 18, badgeW, 11, color.RGBA{10, 14, 24, 200}, false)
+		vector.StrokeRect(screen, 6, 18, badgeW, 11, 1, color.RGBA{45, 60, 95, 160}, false)
+
 		if icon != nil {
 			iconOp := &ebiten.DrawImageOptions{}
-			iconOp.GeoM.Translate(8, 17)
+			iconOp.GeoM.Translate(9, 20)
 			screen.DrawImage(icon, iconOp)
 		}
-		DrawText(screen, wName, 18, 18, wCol)
+		DrawText(screen, wName, 20, 20, wCol)
 
 		if hasMultipleWeapons {
-			DrawText(screen, "Q:SWAP", 72, 18, color.RGBA{170, 180, 210, 220})
+			DrawText(screen, "Q:SWAP", 76, 20, color.RGBA{170, 185, 220, 230})
 		}
 	}
 }
@@ -269,6 +306,17 @@ var fontData = map[rune][7]byte{
 	'"': {0x0A, 0x0A, 0x14, 0x00, 0x00, 0x00, 0x00},
 	'(': {0x02, 0x04, 0x08, 0x08, 0x08, 0x04, 0x02},
 	')': {0x08, 0x04, 0x02, 0x02, 0x02, 0x04, 0x08},
+	'[': {0x0E, 0x08, 0x08, 0x08, 0x08, 0x08, 0x0E},
+	']': {0x0E, 0x02, 0x02, 0x02, 0x02, 0x02, 0x0E},
+	'<': {0x02, 0x04, 0x08, 0x10, 0x08, 0x04, 0x02},
+	'>': {0x08, 0x04, 0x02, 0x01, 0x02, 0x04, 0x08},
+	'*': {0x00, 0x15, 0x0E, 0x1F, 0x0E, 0x15, 0x00},
+	'=': {0x00, 0x00, 0x1F, 0x00, 0x1F, 0x00, 0x00},
+	'_': {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F},
+	'%': {0x19, 0x1A, 0x04, 0x08, 0x10, 0x0B, 0x13},
+	'#': {0x0A, 0x0A, 0x1F, 0x0A, 0x1F, 0x0A, 0x0A},
+	';': {0x00, 0x0C, 0x0C, 0x00, 0x0C, 0x08, 0x00},
+	'★': {0x04, 0x04, 0x1F, 0x0E, 0x0E, 0x15, 0x11},
 }
 
 // WrapText wraps text into lines that fit within maxWidthPx (each char is 6px).

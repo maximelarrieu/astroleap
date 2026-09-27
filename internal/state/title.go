@@ -11,6 +11,7 @@ import (
 	"astroleap/internal/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type TitleState struct {
@@ -61,6 +62,17 @@ func (s *TitleState) Update(dt float64) {
 		audio.Get().PlayJump()
 		s.machine.Change(NewPlayState(s.machine))
 		return
+	}
+
+	// Quick Sector selection (1..5 or F1..F5)
+	numKeys := []ebiten.Key{ebiten.Key1, ebiten.Key2, ebiten.Key3, ebiten.Key4, ebiten.Key5}
+	fKeys := []ebiten.Key{ebiten.KeyF1, ebiten.KeyF2, ebiten.KeyF3, ebiten.KeyF4, ebiten.KeyF5}
+	for i := 0; i < 5; i++ {
+		if inpututil.IsKeyJustPressed(numKeys[i]) || inpututil.IsKeyJustPressed(fKeys[i]) {
+			audio.Get().PlayJump()
+			s.machine.Change(NewPlayStateWithProgress(s.machine, i+1, 0, 0, nil))
+			return
+		}
 	}
 }
 

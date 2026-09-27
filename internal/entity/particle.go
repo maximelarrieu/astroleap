@@ -133,3 +133,51 @@ func (ps *ParticleSystem) SpawnStompBurst(x, y float64) {
 		ps.particles = append(ps.particles, p)
 	}
 }
+
+// SpawnDerelictSpark spawns high-voltage electrical short-circuit sparks from damaged ceilings.
+func (ps *ParticleSystem) SpawnDerelictSpark(x, y float64) {
+	for i := 0; i < 4; i++ {
+		p := &Particle{
+			X:       x,
+			Y:       y,
+			VX:      (ps.rng.Float64() - 0.5) * 2.2,
+			VY:      0.6 + ps.rng.Float64()*2.0,
+			Life:    0.20 + ps.rng.Float64()*0.20,
+			MaxLife: 0.40,
+			Color:   color.RGBA{130, 235, 255, 255},
+			Size:    1.6,
+		}
+		ps.particles = append(ps.particles, p)
+	}
+}
+
+// SpawnReactorEmber spawns rising superheated plasma embers in the reactor bay.
+func (ps *ParticleSystem) SpawnReactorEmber(x, y float64) {
+	p := &Particle{
+		X:       x,
+		Y:       y,
+		VX:      (ps.rng.Float64() - 0.5) * 0.9,
+		VY:      -1.0 - ps.rng.Float64()*1.4,
+		Life:    0.6 + ps.rng.Float64()*0.5,
+		MaxLife: 1.1,
+		Color:   color.RGBA{255, uint8(110 + ps.rng.Intn(110)), 20, 240},
+		Size:    1.8,
+	}
+	ps.particles = append(ps.particles, p)
+}
+
+// SpawnDerelictDust spawns tiny drifting ambient dust motes inside the abandoned ship.
+func (ps *ParticleSystem) SpawnDerelictDust(x, y float64) {
+	p := &Particle{
+		X:       x,
+		Y:       y,
+		VX:      (ps.rng.Float64() - 0.5) * 0.35,
+		VY:      -0.08 + (ps.rng.Float64()-0.5)*0.2,
+		Life:    1.2 + ps.rng.Float64()*0.8,
+		MaxLife: 2.0,
+		Color:   color.RGBA{135, 155, 185, 120},
+		Size:    1.0,
+	}
+	ps.particles = append(ps.particles, p)
+}
+

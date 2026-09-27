@@ -214,12 +214,21 @@ func (b *Boss) Draw(screen *ebiten.Image, camX float64) {
 		img = atlas.Boss2
 	}
 
+	if img == nil {
+		return
+	}
+
+	imgW := float64(img.Bounds().Dx())
+	imgH := float64(img.Bounds().Dy())
+
 	op := &ebiten.DrawImageOptions{}
 	if !b.FacingLeft {
 		// Flip horizontally
 		op.GeoM.Scale(-1, 1)
-		op.GeoM.Translate(BossWidth, 0)
+		op.GeoM.Translate(imgW, 0)
 	}
-	op.GeoM.Translate(screenX, b.Y)
+	drawX := screenX - (imgW-BossWidth)/2.0
+	drawY := b.Y - (imgH-BossHeight)/2.0
+	op.GeoM.Translate(drawX, drawY)
 	screen.DrawImage(img, op)
 }

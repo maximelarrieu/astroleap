@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 
+	"astroleap/internal/assets"
 	"astroleap/internal/physics"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -160,13 +161,23 @@ func (h *HealthPickup) Draw(screen *ebiten.Image, camX float64) {
 	if h.Collected {
 		return
 	}
-	sx := float32(h.X - camX)
-	if sx < -16 || sx > 330 {
+	screenX := h.X - camX
+	if screenX < -16 || screenX > 330 {
 		return
 	}
+
+	atlas := assets.Get()
+	if atlas.HealthPickup != nil {
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(screenX, h.Y)
+		screen.DrawImage(atlas.HealthPickup, op)
+		return
+	}
+
+	sx := float32(screenX)
 	sy := float32(h.Y)
 
-	// Canister body (cyan cylinder with white/red cross)
+	// Fallback canister body (cyan cylinder with white/red cross)
 	vector.DrawFilledRect(screen, sx+3, sy+1, 8, 12, color.RGBA{40, 180, 200, 255}, false)
 	vector.DrawFilledRect(screen, sx+5, sy-1, 4, 3, color.RGBA{180, 210, 230, 255}, false)
 	vector.DrawFilledRect(screen, sx+5, sy+5, 4, 4, color.RGBA{255, 255, 255, 255}, false)
@@ -215,13 +226,23 @@ func (b *ThrusterBoostPickup) Draw(screen *ebiten.Image, camX float64) {
 	if b.Collected {
 		return
 	}
-	sx := float32(b.X - camX)
-	if sx < -16 || sx > 330 {
+	screenX := b.X - camX
+	if screenX < -16 || screenX > 330 {
 		return
 	}
+
+	atlas := assets.Get()
+	if atlas.BoostPickup != nil {
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(screenX, b.Y)
+		screen.DrawImage(atlas.BoostPickup, op)
+		return
+	}
+
+	sx := float32(screenX)
 	sy := float32(b.Y)
 
-	// Ion core glowing diamond / cell
+	// Fallback Ion core glowing diamond / cell
 	vector.DrawFilledRect(screen, sx+2, sy+2, 10, 10, color.RGBA{255, 170, 30, 255}, false)
 	vector.DrawFilledRect(screen, sx+4, sy+4, 6, 6, color.RGBA{255, 240, 100, 255}, false)
 	vector.StrokeRect(screen, sx+2, sy+2, 10, 10, 1, color.RGBA{255, 90, 20, 255}, false)

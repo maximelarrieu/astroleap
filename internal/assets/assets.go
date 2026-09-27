@@ -1,13 +1,32 @@
 package assets
 
 import (
+	"bytes"
+	"embed"
+	"fmt"
 	"image"
 	"image/color"
+	_ "image/png"
 	"math"
 	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
+
+//go:embed sprites/*.png
+var spriteFS embed.FS
+
+func loadEmbeddedPNG(path string) *ebiten.Image {
+	data, err := spriteFS.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil
+	}
+	return ebiten.NewImageFromImage(img)
+}
 
 // TextureAtlas holds all cached game sprites and tiles.
 type TextureAtlas struct {
@@ -18,6 +37,11 @@ type TextureAtlas struct {
 	AstronautJump   *ebiten.Image
 	AstronautThrust *ebiten.Image
 	AstronautHurt   *ebiten.Image
+
+	// Companion
+	CompanionIdle  *ebiten.Image
+	CompanionFloat *ebiten.Image
+	CompanionHurt  *ebiten.Image
 
 	// Enemies
 	Blob1        *ebiten.Image
@@ -42,12 +66,16 @@ type TextureAtlas struct {
 	TileRockReactor    *ebiten.Image
 	TilePlatform       *ebiten.Image
 	TileSpikes         *ebiten.Image
+	TileSpikesLaser    *ebiten.Image
+	TileSpikesPlasma   *ebiten.Image
 	Crystals           [4]*ebiten.Image
 	Lander             *ebiten.Image
 	AirlockDoor        *ebiten.Image
 	WarpConsole        *ebiten.Image
 	KeyCard            *ebiten.Image
 	RepairCore         *ebiten.Image
+	HealthPickup       *ebiten.Image
+	BoostPickup        *ebiten.Image
 	Earth              *ebiten.Image
 	Mars               *ebiten.Image
 	Jupiter            *ebiten.Image
@@ -565,24 +593,124 @@ func buildAtlas() *TextureAtlas {
 	a.TileRockIce = parsePixelArt(16, 16, tileRockRows, tileIceMap)
 
 	// Sector 4: Mothership Vessel Metallic Hull Tiles
-	tileVesselMap := map[rune]color.RGBA{
-		'T': color.RGBA{100, 240, 255, 255}, // Glowing cyan rim LED strip
-		'B': color.RGBA{95, 110, 135, 255},  // Titanium alloy deck
-		'C': color.RGBA{55, 65, 85, 255},    // Shadowed hull panel
-		'D': color.RGBA{28, 34, 48, 255},    // Heavy structural bulkheads
+	vesselSurfMap := map[rune]color.RGBA{
+		'T': color.RGBA{90, 230, 255, 255},  // Glowing cyan floor guide rim
+		't': color.RGBA{30, 120, 160, 255},  // Dim cyan glow fringe
+		'M': color.RGBA{120, 140, 170, 255}, // Bright brushed steel highlight
+		'B': color.RGBA{75, 90, 115, 255},   // Titanium alloy deck plate
+		'D': color.RGBA{40, 48, 65, 255},    // Shadowed steel plate
+		'R': color.RGBA{190, 210, 235, 255}, // Hex bolt / rivet
+		'#': color.RGBA{18, 22, 32, 255},    // Dark seam / plate separation groove
 	}
-	a.TileSurfaceVessel = parsePixelArt(16, 16, tileSurfRows, tileVesselMap)
-	a.TileRockVessel = parsePixelArt(16, 16, tileRockRows, tileVesselMap)
+	vesselSurfRows := []string{
+		"TTTTTTTTTTTTTTTT",
+		"tttttttttttttttt",
+		"#RBBBBB##BBBBBR#",
+		"#BMMMMB##BMMMMB#",
+		"#BMBBMB##BMBBMB#",
+		"#BMMMMB##BMMMMB#",
+		"#BDDDDB##BDDDDB#",
+		"################",
+		"#RBBBBB##BBBBBR#",
+		"#BMMMMB##BMMMMB#",
+		"#BMBBMB##BMBBMB#",
+		"#BMMMMB##BMMMMB#",
+		"#BDDDDB##BDDDDB#",
+		"################",
+		"#DDDDDD##DDDDDD#",
+		"################",
+	}
+	a.TileSurfaceVessel = parsePixelArt(16, 16, vesselSurfRows, vesselSurfMap)
+
+	vesselWallMap := map[rune]color.RGBA{
+		'M': color.RGBA{110, 128, 155, 255}, // Bulkhead metal highlight
+		'B': color.RGBA{65, 78, 100, 255},   // Structural steel panel
+		'D': color.RGBA{35, 42, 58, 255},    // Recessed panel shadow
+		'V': color.RGBA{16, 20, 28, 255},    // Vent / conduit shadow slit
+		'R': color.RGBA{170, 195, 225, 255}, // Rivet / fastener
+		'C': color.RGBA{30, 140, 180, 255},  // Dim cyan conduit indicator
+		'#': color.RGBA{14, 18, 26, 255},    // Heavy structural beam outline
+	}
+	vesselWallRows := []string{
+		"################",
+		"#RBBBBBBBBBBBBR#",
+		"#BDDDDDDDDDDDDB#",
+		"#BD#VV#C#VV#C#DB#",
+		"#BD#VV#C#VV#C#DB#",
+		"#BD#VV#C#VV#C#DB#",
+		"#BD#VV#C#VV#C#DB#",
+		"#BDDDDDDDDDDDDB#",
+		"#B############B#",
+		"#BDDDDDDDDDDDDB#",
+		"#BD#VV#C#VV#C#DB#",
+		"#BD#VV#C#VV#C#DB#",
+		"#BD#VV#C#VV#C#DB#",
+		"#BDDDDDDDDDDDDB#",
+		"#RBBBBBBBBBBBBR#",
+		"################",
+	}
+	a.TileRockVessel = parsePixelArt(16, 16, vesselWallRows, vesselWallMap)
 
 	// Sector 5: Reactor Engine Bay High-Tech Alloy Tiles
-	tileReactorMap := map[rune]color.RGBA{
-		'T': color.RGBA{255, 175, 40, 255}, // High-temp amber warning crest
-		'B': color.RGBA{120, 85, 65, 255},  // Thermal bronze plating
-		'C': color.RGBA{75, 45, 30, 255},   // Heat vent recess
-		'D': color.RGBA{38, 24, 20, 255},   // Heavy obsidian engine alloy
+	reactorSurfMap := map[rune]color.RGBA{
+		'T': color.RGBA{255, 175, 40, 255},  // Glowing amber warning rim strip
+		't': color.RGBA{180, 95, 20, 255},   // Dim amber rim falloff
+		'Y': color.RGBA{245, 190, 30, 255},  // Warning hazard yellow
+		'B': color.RGBA{100, 75, 60, 255},   // Scorched thermal bronze deck plate
+		'D': color.RGBA{50, 35, 28, 255},    // Deep thermal shadow
+		'G': color.RGBA{180, 50, 15, 255},   // Deep orange thermal exhaust glow
+		'H': color.RGBA{255, 130, 30, 255},  // Intense plasma heat highlight
+		'R': color.RGBA{210, 170, 130, 255}, // High-temp alloy bolt
+		'#': color.RGBA{22, 14, 10, 255},    // Carbonized seam / hazard black
 	}
-	a.TileSurfaceReactor = parsePixelArt(16, 16, tileSurfRows, tileReactorMap)
-	a.TileRockReactor = parsePixelArt(16, 16, tileRockRows, tileReactorMap)
+	reactorSurfRows := []string{
+		"TTTTTTTTTTTTTTTT",
+		"tttttttttttttttt",
+		"#YY##YY##YY##YY#",
+		"##YY##YY##YY##YY",
+		"Y##YY##YY##YY##Y",
+		"YY##YY##YY##YY##",
+		"#YY##YY##YY##YY#",
+		"################",
+		"#RBBBBBBBBBBBBR#",
+		"#BGGGHGGGGHGGGB#",
+		"#BGHGGGHGHGGGHB#",
+		"#BGGGHGGGGHGGGB#",
+		"#BDDDDDDDDDDDDB#",
+		"#RBBBBBBBBBBBBR#",
+		"#DDDDDDDDDDDDDD#",
+		"################",
+	}
+	a.TileSurfaceReactor = parsePixelArt(16, 16, reactorSurfRows, reactorSurfMap)
+
+	reactorWallMap := map[rune]color.RGBA{
+		'M': color.RGBA{130, 95, 75, 255},   // Heat shield alloy highlight
+		'B': color.RGBA{85, 58, 45, 255},    // Scorched bronze blast plating
+		'D': color.RGBA{45, 28, 20, 255},    // Heavy shadow
+		'P': color.RGBA{220, 85, 25, 255},   // Superheated plasma pipe core
+		'H': color.RGBA{255, 195, 80, 255},  // White-hot plasma pipe specular
+		'R': color.RGBA{200, 150, 120, 255}, // Heavy blast bolt
+		'#': color.RGBA{20, 12, 8, 255},     // Carbonized blast frame outline
+	}
+	reactorWallRows := []string{
+		"################",
+		"#RBBB#PPHH#BBBR#",
+		"#BDDD#PPHH#DDDB#",
+		"#BDDD#PPHH#DDDB#",
+		"#BDDD#PPHH#DDDB#",
+		"#BDDD#PPHH#DDDB#",
+		"#RBBB#PPHH#BBBR#",
+		"######PPHH######",
+		"######PPHH######",
+		"#RBBB#PPHH#BBBR#",
+		"#BDDD#PPHH#DDDB#",
+		"#BDDD#PPHH#DDDB#",
+		"#BDDD#PPHH#DDDB#",
+		"#BDDD#PPHH#DDDB#",
+		"#RBBB#PPHH#BBBR#",
+		"################",
+	}
+	a.TileRockReactor = parsePixelArt(16, 16, reactorWallRows, reactorWallMap)
 
 	// Floating Sci-Fi Metal Platform
 	cPlatTop := color.RGBA{75, 215, 255, 255} // Glowing cyan rim
@@ -617,7 +745,7 @@ func buildAtlas() *TextureAtlas {
 	}
 	a.TilePlatform = parsePixelArt(16, 16, platRows, platMap)
 
-	// Cosmic Spikes / Hazards
+	// Cosmic Spikes / Planetary Hazards (Sectors 1..3)
 	cSpike1 := color.RGBA{255, 45, 110, 255}
 	cSpike2 := color.RGBA{180, 20, 70, 255}
 	cSpikeHi := color.RGBA{255, 180, 220, 255}
@@ -647,6 +775,67 @@ func buildAtlas() *TextureAtlas {
 		"................",
 	}
 	a.TileSpikes = parsePixelArt(16, 16, spikeRows, spikeMap)
+
+	// Sector 4 Electric Laser Conduits (Mothership interior hazard)
+	laserSpikeMap := map[rune]color.RGBA{
+		'.': {0, 0, 0, 0},
+		'#': color.RGBA{14, 18, 28, 255},    // Emitter outline
+		'M': color.RGBA{70, 85, 110, 255},   // Steel base emitter housing
+		'D': color.RGBA{35, 42, 58, 255},    // Dark emitter housing
+		'E': color.RGBA{25, 130, 200, 255},  // Laser glow aura
+		'L': color.RGBA{60, 215, 255, 255},  // Crackling cyan laser beam
+		'W': color.RGBA{235, 255, 255, 255}, // Pure white energy core
+	}
+	laserSpikeRows := []string{
+		"................",
+		"....#......#....",
+		"...#W#....#W#...",
+		"...#LW#...#LW#..",
+		"..#ELLW#.#ELLW#.",
+		"..#EWWLE##EWWLE#",
+		".#EWWWWL##EWWWWL",
+		".#LLWWEE##LLWWEE",
+		"#ELLWEEE#ELLWEEE",
+		"#MMMMMMMMMMMMMM#",
+		"#MDDDMDDDDDDMDD#",
+		"#MMMMMMMMMMMMMM#",
+		"################",
+		"################",
+		"................",
+		"................",
+	}
+	a.TileSpikesLaser = parsePixelArt(16, 16, laserSpikeRows, laserSpikeMap)
+
+	// Sector 5 Bubbling Plasma Vents (Reactor Bay interior hazard)
+	plasmaSpikeMap := map[rune]color.RGBA{
+		'.': {0, 0, 0, 0},
+		'#': color.RGBA{18, 10, 6, 255},     // Scorched furnace outline
+		'M': color.RGBA{75, 50, 35, 255},    // Scorched alloy rim
+		'D': color.RGBA{38, 22, 14, 255},    // Shadowed furnace plate
+		'R': color.RGBA{180, 35, 15, 255},   // Deep crimson plasma base
+		'O': color.RGBA{255, 100, 20, 255},  // Blazing orange plasma
+		'Y': color.RGBA{255, 200, 40, 255},  // Molten yellow plasma
+		'W': color.RGBA{255, 250, 210, 255}, // White-hot plasma jet
+	}
+	plasmaSpikeRows := []string{
+		"................",
+		"....#......#....",
+		"...#W#....#W#...",
+		"...#YW#...#YW#..",
+		"..#OYYW#.#OYYW#.",
+		"..#OWWYO##OWWYO#",
+		".#OYYYYO##OYYYYO",
+		".#ROOOOR##ROOOOR",
+		"#RROOOOR##RROOOR",
+		"#MMMMMMMMMMMMMM#",
+		"#MDDDMDDDDDDMDD#",
+		"#MMMMMMMMMMMMMM#",
+		"################",
+		"################",
+		"................",
+		"................",
+	}
+	a.TileSpikesPlasma = parsePixelArt(16, 16, plasmaSpikeRows, plasmaSpikeMap)
 
 	// -------------------------------------------------------------
 	// ENERGY CRYSTALS (4-frame rotation sparkle)
@@ -1303,6 +1492,63 @@ func buildAtlas() *TextureAtlas {
 		"...##...",
 	}
 	a.IconNova = parsePixelArt(8, 8, iconNovaRows, iconNovaMap)
+
+	// Override with DA-aligned sprites from embedded PNGs
+	if img := loadEmbeddedPNG("sprites/idle.png"); img != nil {
+		a.AstronautIdle = img
+	}
+	if img := loadEmbeddedPNG("sprites/run1.png"); img != nil {
+		a.AstronautRun1 = img
+	}
+	if img := loadEmbeddedPNG("sprites/run2.png"); img != nil {
+		a.AstronautRun2 = img
+	}
+	if img := loadEmbeddedPNG("sprites/jump.png"); img != nil {
+		a.AstronautJump = img
+	}
+	if img := loadEmbeddedPNG("sprites/thrust.png"); img != nil {
+		a.AstronautThrust = img
+	}
+	if img := loadEmbeddedPNG("sprites/hurt.png"); img != nil {
+		a.AstronautHurt = img
+	}
+
+	a.CompanionIdle = loadEmbeddedPNG("sprites/companion_idle.png")
+	a.CompanionFloat = loadEmbeddedPNG("sprites/companion_float.png")
+	a.CompanionHurt = loadEmbeddedPNG("sprites/companion_hurt.png")
+
+	if img := loadEmbeddedPNG("sprites/blob1.png"); img != nil {
+		a.Blob1 = img
+	}
+	if img := loadEmbeddedPNG("sprites/blob2.png"); img != nil {
+		a.Blob2 = img
+	}
+	if img := loadEmbeddedPNG("sprites/blob_squished.png"); img != nil {
+		a.BlobSquished = img
+	}
+	if img := loadEmbeddedPNG("sprites/hover1.png"); img != nil {
+		a.Hover1 = img
+	}
+	if img := loadEmbeddedPNG("sprites/hover2.png"); img != nil {
+		a.Hover2 = img
+	}
+	if img := loadEmbeddedPNG("sprites/boss1.png"); img != nil {
+		a.Boss1 = img
+	}
+	if img := loadEmbeddedPNG("sprites/boss2.png"); img != nil {
+		a.Boss2 = img
+	}
+	if img := loadEmbeddedPNG("sprites/boss_hurt.png"); img != nil {
+		a.BossHurt = img
+	}
+	for i := 0; i < 4; i++ {
+		if img := loadEmbeddedPNG(fmt.Sprintf("sprites/crystal_%d.png", i)); img != nil {
+			a.Crystals[i] = img
+		}
+	}
+
+	a.HealthPickup = loadEmbeddedPNG("sprites/health_pickup.png")
+	a.BoostPickup = loadEmbeddedPNG("sprites/boost_pickup.png")
 
 	return a
 }

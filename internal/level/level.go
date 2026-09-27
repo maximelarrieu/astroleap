@@ -130,6 +130,12 @@ type Level struct {
 	BossX              float64
 	BossY              float64
 	StarfieldImg       *ebiten.Image
+	AnimTimer          float64
+}
+
+// Update advances animations and timers within the level.
+func (lvl *Level) Update(dt float64) {
+	lvl.AnimTimer += dt
 }
 
 func makeGrid(w, h int) [][]int {
@@ -977,6 +983,15 @@ func (lvl *Level) IsHazard(tileX, tileY int) bool {
 
 // DrawBackground renders the parallax starfield, distant celestial body, and thematic ridges.
 func (lvl *Level) DrawBackground(screen *ebiten.Image, camX float64) {
+	if lvl.Theme == "vessel" {
+		lvl.drawVesselBackground(screen, camX)
+		return
+	}
+	if lvl.Theme == "reactor" {
+		lvl.drawReactorBackground(screen, camX)
+		return
+	}
+
 	atlas := assets.Get()
 
 	// 1. Starfield base (wraps horizontally with slow 0.08x parallax)
@@ -1003,8 +1018,6 @@ func (lvl *Level) DrawBackground(screen *ebiten.Image, camX float64) {
 		celestialImg = atlas.Mars
 	case "jupiter":
 		celestialImg = atlas.Jupiter
-	case "mothership", "core":
-		celestialImg = atlas.Earth
 	default: // earth
 		celestialImg = atlas.Earth
 	}
@@ -1019,32 +1032,242 @@ func (lvl *Level) DrawBackground(screen *ebiten.Image, camX float64) {
 		ridgeColor = color.RGBA{58, 24, 28, 255} // Martian crimson
 	} else if lvl.Theme == "ice" {
 		ridgeColor = color.RGBA{18, 42, 65, 255} // Europa glacial navy
-	} else if lvl.Theme == "vessel" {
-		ridgeColor = color.RGBA{18, 24, 38, 255} // Mothership deep hull
-	} else if lvl.Theme == "reactor" {
-		ridgeColor = color.RGBA{34, 20, 16, 255} // Reactor thermal bronze
 	}
 
 	for i := -1; i < 4; i++ {
 		bx := float32(float64(i*160) - ridgeOffset)
 		vector.DrawFilledRect(screen, bx, 130, 160, 50, ridgeColor, false)
 	}
+}
 
-	// For spaceship interior themes: draw structural pillars and neon conduits
-	if lvl.Theme == "vessel" || lvl.Theme == "reactor" {
-		pillarOffset := math.Mod(camX*0.15, 80.0)
-		for i := -1; i < 6; i++ {
-			px := float32(float64(i*80) - pillarOffset)
-			colPillar := color.RGBA{18, 22, 32, 210}
-			colNeon := color.RGBA{60, 200, 255, 140}
-			if lvl.Theme == "reactor" {
-				colPillar = color.RGBA{28, 18, 14, 210}
-				colNeon = color.RGBA{255, 140, 30, 140}
-			}
-			vector.DrawFilledRect(screen, px, 0, 14, 180, colPillar, false)
-			vector.DrawFilledRect(screen, px+6, 0, 2, 180, colNeon, false)
+// drawVesselBackground renders the enclosed, derelict Mothership interior (Sector 4).
+func (lvl *Level) drawVesselBackground(screen *ebiten.Image, camX float64) {
+	// 1. Dark industrial hull base (cold steel enclosed chamber)
+	vector.DrawFilledRect(screen, 0, 0, 320, 180, color.RGBA{9, 13, 22, 255}, false)
+
+	// 2. Vertical hull bulkhead seams & structural wall plates (0.12x parallax)
+	bulkheadOffset := math.Mod(camX*0.12, 64.0)
+	if bulkheadOffset < 0 {
+		bulkheadOffset += 64.0
+	}
+	for i := -1; i < 7; i++ {
+		bx := float32(float64(i*64) - bulkheadOffset)
+		// Plate shadow groove
+		vector.DrawFilledRect(screen, bx, 0, 62, 180, color.RGBA{13, 19, 32, 255}, false)
+		vector.DrawFilledRect(screen, bx+62, 0, 2, 180, color.RGBA{6, 9, 15, 255}, false)
+		// Subtle mid-wall panel bevel
+		vector.DrawFilledRect(screen, bx+4, 30, 54, 110, color.RGBA{10, 15, 26, 255}, false)
+		vector.DrawFilledRect(screen, bx+4, 30, 54, 1, color.RGBA{22, 32, 50, 255}, false)
+		vector.DrawFilledRect(screen, bx+4, 139, 54, 1, color.RGBA{18, 25, 40, 255}, false)
+	}
+
+	// 3. Reinforced Portholes looking out to cold outer space (0.06x parallax)
+	portholeOffset := math.Mod(camX*0.06, 160.0)
+	if portholeOffset < 0 {
+		portholeOffset += 160.0
+	}
+	for i := -1; i < 4; i++ {
+		px := float32(float64(i*160+40) - portholeOffset)
+		// Octagonal thick steel porthole bezel
+		vector.DrawFilledRect(screen, px-2, 22, 44, 30, color.RGBA{24, 32, 48, 255}, false)
+		vector.DrawFilledRect(screen, px-1, 23, 42, 28, color.RGBA{15, 20, 32, 255}, false)
+		// Deep space view inside porthole aperture
+		vector.DrawFilledRect(screen, px+2, 25, 36, 24, color.RGBA{4, 6, 12, 255}, false)
+		// Distant tiny stars glimpsed outside
+		vector.DrawFilledRect(screen, px+8, 29, 1, 1, color.RGBA{210, 230, 255, 220}, false)
+		vector.DrawFilledRect(screen, px+26, 33, 1, 1, color.RGBA{230, 245, 255, 255}, false)
+		vector.DrawFilledRect(screen, px+18, 42, 1, 1, color.RGBA{160, 200, 255, 180}, false)
+		// Glass diagonal reflection sheen
+		vector.DrawFilledRect(screen, px+12, 25, 3, 24, color.RGBA{80, 180, 220, 40}, false)
+		vector.DrawFilledRect(screen, px+20, 25, 1, 24, color.RGBA{80, 180, 220, 25}, false)
+		// Porthole corner rivets
+		vector.DrawFilledRect(screen, px-1, 23, 2, 2, color.RGBA{65, 85, 115, 255}, false)
+		vector.DrawFilledRect(screen, px+39, 23, 2, 2, color.RGBA{65, 85, 115, 255}, false)
+		vector.DrawFilledRect(screen, px-1, 49, 2, 2, color.RGBA{65, 85, 115, 255}, false)
+		vector.DrawFilledRect(screen, px+39, 49, 2, 2, color.RGBA{65, 85, 115, 255}, false)
+	}
+
+	// 4. Overhead structural ceiling I-beams & conduit channels
+	vector.DrawFilledRect(screen, 0, 0, 320, 12, color.RGBA{18, 24, 38, 255}, false)
+	vector.DrawFilledRect(screen, 0, 12, 320, 2, color.RGBA{28, 38, 58, 255}, false)
+	vector.DrawFilledRect(screen, 0, 14, 320, 1, color.RGBA{8, 12, 18, 255}, false)
+
+	// Mid-wall conduit wire tray
+	vector.DrawFilledRect(screen, 0, 78, 320, 3, color.RGBA{14, 20, 30, 255}, false)
+	vector.DrawFilledRect(screen, 0, 80, 320, 1, color.RGBA{26, 36, 52, 255}, false)
+
+	// 5. Severed dangling power cables with intermittent electrical short-circuit sparks
+	cableOffset := math.Mod(camX*0.16, 90.0)
+	if cableOffset < 0 {
+		cableOffset += 90.0
+	}
+	for i := -1; i < 5; i++ {
+		cx := float32(float64(i*90+30) - cableOffset)
+		// Black insulation cable hanging down from ceiling
+		vector.DrawFilledRect(screen, cx, 14, 2, 12, color.RGBA{15, 18, 25, 255}, false)
+		vector.DrawFilledRect(screen, cx+1, 26, 2, 10, color.RGBA{15, 18, 25, 255}, false)
+		vector.DrawFilledRect(screen, cx+2, 36, 1, 8, color.RGBA{15, 18, 25, 255}, false)
+		// Exposed copper wire tip
+		vector.DrawFilledRect(screen, cx+2, 44, 1, 2, color.RGBA{190, 120, 60, 255}, false)
+
+		// Short-circuit electric spark
+		sparkPhase := math.Sin(lvl.AnimTimer*13.0 + float64(i)*4.3)
+		if sparkPhase > 0.82 {
+			vector.DrawFilledRect(screen, cx+1, 44, 3, 3, color.RGBA{100, 230, 255, 255}, false)
+			vector.DrawFilledRect(screen, cx+2, 45, 1, 1, color.RGBA{255, 255, 255, 255}, false)
 		}
 	}
+
+	// 6. Abandoned Wall Monitors / Computer Terminals (0.16x parallax)
+	termOffset := math.Mod(camX*0.16, 128.0)
+	if termOffset < 0 {
+		termOffset += 128.0
+	}
+	for i := -1; i < 4; i++ {
+		tx := float32(float64(i*128+60) - termOffset)
+		// Terminal bezel
+		vector.DrawFilledRect(screen, tx, 58, 28, 20, color.RGBA{20, 28, 42, 255}, false)
+		vector.DrawFilledRect(screen, tx+2, 60, 24, 16, color.RGBA{6, 12, 18, 255}, false)
+		// CRT scanlines
+		for line := 0; line < 16; line += 2 {
+			vector.DrawFilledRect(screen, tx+2, float32(60+line), 24, 1, color.RGBA{10, 20, 28, 255}, false)
+		}
+		// Blinking error state
+		blink := math.Sin(lvl.AnimTimer*5.0+float64(i)*2.7) > 0
+		if blink {
+			if i%2 == 0 {
+				// Red alert status block [ERR]
+				vector.DrawFilledRect(screen, tx+6, 66, 12, 4, color.RGBA{255, 50, 70, 230}, false)
+			} else {
+				// Amber offline indicator [OFFLINE]
+				vector.DrawFilledRect(screen, tx+5, 66, 14, 4, color.RGBA{255, 170, 30, 230}, false)
+			}
+		}
+	}
+
+	// 7. Flickering Emergency Fluorescent Light Tubes along upper wall (0.15x parallax)
+	lightOffset := math.Mod(camX*0.15, 80.0)
+	if lightOffset < 0 {
+		lightOffset += 80.0
+	}
+	for i := -1; i < 6; i++ {
+		lx := float32(float64(i*80+20) - lightOffset)
+		// Fixture casing
+		vector.DrawFilledRect(screen, lx, 15, 26, 4, color.RGBA{25, 32, 46, 255}, false)
+
+		flicker := math.Sin(lvl.AnimTimer*7.0+float64(i)*3.2) * math.Cos(lvl.AnimTimer*14.0+float64(i))
+		if i%3 == 0 || flicker > 0.15 {
+			// Illuminated tube
+			vector.DrawFilledRect(screen, lx+2, 16, 22, 2, color.RGBA{110, 240, 255, 255}, false)
+			// Soft downward emergency light cone
+			vector.DrawFilledRect(screen, lx-4, 19, 34, 55, color.RGBA{40, 180, 230, 20}, false)
+		} else {
+			// Dead / shattered tube
+			vector.DrawFilledRect(screen, lx+2, 16, 22, 2, color.RGBA{35, 45, 60, 255}, false)
+		}
+	}
+
+	// 8. Bottom corridor shadow gradient for ground depth
+	vector.DrawFilledRect(screen, 0, 148, 320, 32, color.RGBA{6, 8, 14, 180}, false)
+}
+
+// drawReactorBackground renders the destabilizing engine chamber and plasma containment cores (Sector 5).
+func (lvl *Level) drawReactorBackground(screen *ebiten.Image, camX float64) {
+	// 1. Deep carbonized chamber alloy base
+	vector.DrawFilledRect(screen, 0, 0, 320, 180, color.RGBA{16, 10, 8, 255}, false)
+
+	// 2. Heavy structural blast columns with hazard chevrons (0.12x parallax)
+	colOffset := math.Mod(camX*0.12, 110.0)
+	if colOffset < 0 {
+		colOffset += 110.0
+	}
+	for i := -1; i < 5; i++ {
+		cx := float32(float64(i*110) - colOffset)
+		// Main column body (heavy scorched metal)
+		vector.DrawFilledRect(screen, cx, 0, 28, 180, color.RGBA{28, 18, 14, 255}, false)
+		vector.DrawFilledRect(screen, cx+2, 0, 24, 180, color.RGBA{22, 14, 10, 255}, false)
+
+		// Diagonal hazard chevrons on column flanks
+		for hy := 0; hy < 180; hy += 12 {
+			vector.DrawFilledRect(screen, cx, float32(hy), 4, 6, color.RGBA{220, 160, 25, 230}, false)
+			vector.DrawFilledRect(screen, cx, float32(hy+6), 4, 6, color.RGBA{20, 12, 8, 230}, false)
+			vector.DrawFilledRect(screen, cx+24, float32(hy), 4, 6, color.RGBA{220, 160, 25, 230}, false)
+			vector.DrawFilledRect(screen, cx+24, float32(hy+6), 4, 6, color.RGBA{20, 12, 8, 230}, false)
+		}
+
+		// Vertical central coolant conduit on column
+		vector.DrawFilledRect(screen, cx+12, 0, 4, 180, color.RGBA{45, 25, 18, 255}, false)
+		vector.DrawFilledRect(screen, cx+13, 0, 2, 180, color.RGBA{85, 45, 30, 255}, false)
+	}
+
+	// 3. Pulsing Molten Plasma Reactor Core Cylinders (0.12x parallax)
+	for i := -1; i < 5; i++ {
+		rx := float32(float64(i*110+55) - colOffset)
+
+		// Upper and lower containment flanges
+		vector.DrawFilledRect(screen, rx-2, 16, 20, 8, color.RGBA{50, 32, 22, 255}, false)
+		vector.DrawFilledRect(screen, rx-2, 146, 20, 8, color.RGBA{50, 32, 22, 255}, false)
+
+		// Quartz containment cylinder
+		vector.DrawFilledRect(screen, rx, 24, 16, 122, color.RGBA{30, 16, 12, 240}, false)
+
+		// Pulsing molten plasma core
+		pulse := 0.65 + 0.35*math.Sin(lvl.AnimTimer*3.2+float64(i)*1.3)
+		coreW := float32(10.0 * pulse)
+		coreX := rx + 8.0 - coreW*0.5
+
+		// Outer plasma heat halo
+		vector.DrawFilledRect(screen, coreX, 24, coreW, 122, color.RGBA{220, 60, 15, 150}, false)
+		// Intense amber/yellow plasma core
+		innerW := float32(4.0 * pulse)
+		if innerW < 1 {
+			innerW = 1
+		}
+		innerX := rx + 8.0 - innerW*0.5
+		vector.DrawFilledRect(screen, innerX, 24, innerW, 122, color.RGBA{255, 200, 50, 230}, false)
+		// White-hot center filament
+		vector.DrawFilledRect(screen, rx+7, 24, 2, 122, color.RGBA{255, 255, 230, 255}, false)
+
+		// Glass reflection sheen
+		vector.DrawFilledRect(screen, rx+2, 24, 2, 122, color.RGBA{255, 200, 150, 45}, false)
+	}
+
+	// 4. Overhead High-Pressure Steam & Coolant Ducts
+	vector.DrawFilledRect(screen, 0, 0, 320, 14, color.RGBA{38, 22, 16, 255}, false)
+	vector.DrawFilledRect(screen, 0, 14, 320, 2, color.RGBA{65, 38, 26, 255}, false)
+	vector.DrawFilledRect(screen, 0, 16, 320, 1, color.RGBA{18, 10, 8, 255}, false)
+
+	// Duct expansion joints
+	for x := 0; x < 320; x += 40 {
+		vector.DrawFilledRect(screen, float32(x), 0, 4, 16, color.RGBA{55, 32, 22, 255}, false)
+		vector.DrawFilledRect(screen, float32(x+1), 0, 2, 16, color.RGBA{95, 55, 36, 255}, false)
+	}
+
+	// 5. Emergency Warning Status Annunciators (0.16x parallax)
+	annOffset := math.Mod(camX*0.16, 140.0)
+	if annOffset < 0 {
+		annOffset += 140.0
+	}
+	for i := -1; i < 4; i++ {
+		ax := float32(float64(i*140+75) - annOffset)
+		vector.DrawFilledRect(screen, ax, 48, 24, 10, color.RGBA{25, 14, 10, 255}, false)
+		vector.DrawFilledRect(screen, ax+2, 50, 20, 6, color.RGBA{12, 6, 4, 255}, false)
+		// Flashing emergency warning beacon
+		warnBlink := math.Sin(lvl.AnimTimer*6.0+float64(i)*2.1) > 0
+		if warnBlink {
+			vector.DrawFilledRect(screen, ax+4, 52, 16, 2, color.RGBA{255, 40, 20, 255}, false)
+		}
+	}
+
+	// 6. Emergency Red Alert Siren Wash (pulsing atmospheric alarm lighting)
+	siren := (math.Sin(lvl.AnimTimer*2.8) + 1.0) * 0.5
+	sirenAlpha := uint8(siren * 26.0)
+	if sirenAlpha > 0 {
+		vector.DrawFilledRect(screen, 0, 0, 320, 180, color.RGBA{225, 30, 10, sirenAlpha}, false)
+	}
+
+	// 7. Bottom Thermal Abyss Shadow & Heat Floor
+	vector.DrawFilledRect(screen, 0, 150, 320, 30, color.RGBA{12, 6, 4, 190}, false)
 }
 
 // DrawTiles renders visible tiles within camera frustum using the sector's theme.
@@ -1099,7 +1322,13 @@ func (lvl *Level) DrawTiles(screen *ebiten.Image, camX float64) {
 			case TilePlatform:
 				tileImg = atlas.TilePlatform
 			case TileSpike:
-				tileImg = atlas.TileSpikes
+				if lvl.Theme == "vessel" && atlas.TileSpikesLaser != nil {
+					tileImg = atlas.TileSpikesLaser
+				} else if lvl.Theme == "reactor" && atlas.TileSpikesPlasma != nil {
+					tileImg = atlas.TileSpikesPlasma
+				} else {
+					tileImg = atlas.TileSpikes
+				}
 			}
 
 			if tileImg != nil {

@@ -13,6 +13,7 @@ import (
 	"astroleap/internal/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -251,6 +252,16 @@ func (s *PlayState) Update(dt float64) {
 		audio.Get().ToggleMute()
 	}
 
+	// Dev / Quick warp shortcuts (F1..F5 to jump directly to any sector)
+	fKeys := []ebiten.Key{ebiten.KeyF1, ebiten.KeyF2, ebiten.KeyF3, ebiten.KeyF4, ebiten.KeyF5}
+	for i := 0; i < len(fKeys); i++ {
+		if inpututil.IsKeyJustPressed(fKeys[i]) {
+			audio.Get().PlayJump()
+			s.machine.Change(NewPlayStateWithProgress(s.machine, i+1, s.score, s.crystalsCollected, s.player))
+			return
+		}
+	}
+
 	if inp.Pause {
 		s.paused = !s.paused
 	}
@@ -284,8 +295,9 @@ func (s *PlayState) Update(dt float64) {
 		}
 	}
 
-	// 1. Update Player & Timer
+	// 1. Update Player, Stage Timers & Clock
 	s.elapsedTime += dt
+	s.lvl.Update(dt)
 	s.player.Update(dt, inp.MoveLeft, inp.MoveRight, inp.JumpPressed, inp.JumpHeld, s.lvl, s.particles)
 
 	// Shooting input
@@ -679,7 +691,25 @@ func (s *PlayState) Update(dt float64) {
 		}
 	}
 
-	// 7. Update Particles
+	// 7. Ambient Derelict Spaceship Atmosphere Particles
+	if s.lvl.Theme == "vessel" {
+		if rand.Float64() < 0.07 { // Occasional electrical short-circuit spark from ceiling
+			sparkX := s.camX + rand.Float64()*320.0
+			s.particles.SpawnDerelictSpark(sparkX, 12.0+rand.Float64()*6.0)
+		}
+		if rand.Float64() < 0.10 { // Floating interior dust motes
+			dustX := s.camX + rand.Float64()*320.0
+			dustY := rand.Float64() * 170.0
+			s.particles.SpawnDerelictDust(dustX, dustY)
+		}
+	} else if s.lvl.Theme == "reactor" {
+		if rand.Float64() < 0.18 { // Rising thermal embers from containment conduits
+			emberX := s.camX + rand.Float64()*320.0
+			s.particles.SpawnReactorEmber(emberX, 172.0)
+		}
+	}
+
+	// Update Particles
 	s.particles.Update(dt)
 
 	// 8. Smooth Camera Tracking with Dynamic Velocity Lookahead

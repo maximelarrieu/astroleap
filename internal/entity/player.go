@@ -57,6 +57,11 @@ type Player struct {
 	StompCombo     int
 	BoostTimer     float64 // Active duration of infinite ion thruster boost
 
+	// Companion Drone
+	CompanionX     float64
+	CompanionY     float64
+	CompanionTimer float64
+
 	// Weapon Inventory
 	HasLaser      bool
 	HasNova       bool
@@ -68,6 +73,8 @@ func NewPlayer(x, y float64) *Player {
 	return &Player{
 		X:            x,
 		Y:            y,
+		CompanionX:   x - 8,
+		CompanionY:   y - 6,
 		FacingRight:  true,
 		Health:       MaxHealth,
 		Fuel:         MaxFuel,
@@ -100,6 +107,16 @@ func (p *Player) Update(dt float64, moveLeft, moveRight, jumpPressed, jumpHeld b
 	if p.ShootCooldown > 0 {
 		p.ShootCooldown -= dt
 	}
+
+	// Companion smooth hovering
+	p.CompanionTimer += dt
+	targetCompX := p.X - 6.0
+	if !p.FacingRight {
+		targetCompX = p.X + 14.0
+	}
+	targetCompY := p.Y - 6.0 + math.Sin(p.CompanionTimer*3.5)*2.5
+	p.CompanionX += (targetCompX - p.CompanionX) * math.Min(1.0, dt*7.0)
+	p.CompanionY += (targetCompY - p.CompanionY) * math.Min(1.0, dt*7.0)
 
 	// 2. Horizontal movement input
 	accel := 0.22
@@ -403,6 +420,30 @@ func (p *Player) Draw(screen *ebiten.Image, camX float64) {
 		return
 	}
 
+	atlas := assets.Get()
+
+	// 1. Draw Companion (slightly behind player)
+	if atlas.CompanionIdle != nil {
+		compScreenX := p.CompanionX - camX
+		compScreenY := p.CompanionY
+		if compScreenX >= -16 && compScreenX <= 336 {
+			var compImg *ebiten.Image = atlas.CompanionIdle
+			if p.InvulnTimer > 0 && atlas.CompanionHurt != nil {
+				compImg = atlas.CompanionHurt
+			} else if (!p.OnGround || math.Abs(p.VX) > 0.4) && atlas.CompanionFloat != nil {
+				compImg = atlas.CompanionFloat
+			}
+
+			compOp := &ebiten.DrawImageOptions{}
+			if !p.FacingRight {
+				compOp.GeoM.Scale(-1, 1)
+				compOp.GeoM.Translate(12, 0)
+			}
+			compOp.GeoM.Translate(compScreenX, compScreenY)
+			screen.DrawImage(compImg, compOp)
+		}
+	}
+
 	// Hurt blinking: blink every 0.1s during invulnerability
 	if p.InvulnTimer > 0 {
 		blinkPhase := int(p.InvulnTimer*15.0) % 2
@@ -414,33 +455,48 @@ func (p *Player) Draw(screen *ebiten.Image, camX float64) {
 	screenX := p.X - camX
 	screenY := p.Y
 
-	atlas := assets.Get()
 	var img *ebiten.Image
 
-	switch p.State {
-	case StateThrust:
-		img = atlas.AstronautThrust
-	case StateJump:
-		img = atlas.AstronautJump
-	case StateRun:
-		frame := int(p.AnimTimer*8.0) % 2
-		if frame == 0 {
-			img = atlas.AstronautRun1
-		} else {
-			img = atlas.AstronautRun2
+	if p.InvulnTimer > 0 && atlas.AstronautHurt != nil {
+		img = atlas.AstronautHurt
+	} else {
+		switch p.State {
+		case StateThrust:
+			img = atlas.AstronautThrust
+		case StateJump:
+			img = atlas.AstronautJump
+		case StateRun:
+			frame := int(p.AnimTimer*8.0) % 2
+			if frame == 0 {
+				img = atlas.AstronautRun1
+			} else {
+				img = atlas.AstronautRun2
+			}
+		default: // Idle
+			img = atlas.AstronautIdle
 		}
-	default: // Idle
-		img = atlas.AstronautIdle
 	}
 
 	if img != nil {
+		imgW := float64(img.Bounds().Dx())
 		op := &ebiten.DrawImageOptions{}
 		if !p.FacingRight {
-			// Mirror horizontally
+			// Mirror horizontally around image width
 			op.GeoM.Scale(-1, 1)
-			op.GeoM.Translate(16, 0)
+			op.GeoM.Translate(imgW, 0)
 		}
-		op.GeoM.Translate(screenX, screenY)
+
+		drawX := screenX
+		drawY := screenY
+		if imgW > 16 {
+			// Center horizontally relative to 16px collision box (p.X to p.X+16)
+			drawX = screenX - (imgW-16.0)/2.0
+			// Anchor feet: in 24px/32px sprites, astronaut feet are at y=23.
+			// Original 16x16 feet are at screenY + 16.
+			drawY = screenY - 8.0
+		}
+
+		op.GeoM.Translate(drawX, drawY)
 		screen.DrawImage(img, op)
 	}
 }
