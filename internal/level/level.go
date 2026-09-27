@@ -994,6 +994,49 @@ func (lvl *Level) DrawBackground(screen *ebiten.Image, camX float64) {
 
 	atlas := assets.Get()
 
+	var bgImg *ebiten.Image
+	switch lvl.Theme {
+	case "crimson":
+		bgImg = atlas.BgCrimson
+	case "ice":
+		bgImg = atlas.BgIce
+	default:
+		bgImg = atlas.BgMoon
+	}
+
+	if bgImg != nil {
+		bgW := float64(bgImg.Bounds().Dx())
+		bgOffset := math.Mod(camX*0.14, bgW)
+		if bgOffset < 0 {
+			bgOffset += bgW
+		}
+		op1 := &ebiten.DrawImageOptions{}
+		op1.GeoM.Translate(-bgOffset, 0)
+		screen.DrawImage(bgImg, op1)
+
+		op2 := &ebiten.DrawImageOptions{}
+		op2.GeoM.Translate(bgW-bgOffset, 0)
+		screen.DrawImage(bgImg, op2)
+
+		// Subtle closer silhouette ridges (0.28x parallax) for extra depth layer
+		ridgeOffset := math.Mod(camX*0.28, 160.0)
+		if ridgeOffset < 0 {
+			ridgeOffset += 160.0
+		}
+		ridgeColor := color.RGBA{16, 20, 32, 160} // Moon dark silhouette
+		if lvl.Theme == "crimson" {
+			ridgeColor = color.RGBA{38, 14, 18, 160} // Martian dark crimson
+		} else if lvl.Theme == "ice" {
+			ridgeColor = color.RGBA{10, 24, 42, 160} // Europa dark glacial
+		}
+
+		for i := -1; i < 4; i++ {
+			bx := float32(float64(i*160) - ridgeOffset)
+			vector.DrawFilledRect(screen, bx, 150, 160, 30, ridgeColor, false)
+		}
+		return
+	}
+
 	// 1. Starfield base (wraps horizontally with slow 0.08x parallax)
 	sfOffset := math.Mod(camX*0.08, 320.0)
 	if sfOffset < 0 {
@@ -1042,49 +1085,66 @@ func (lvl *Level) DrawBackground(screen *ebiten.Image, camX float64) {
 
 // drawVesselBackground renders the enclosed, derelict Mothership interior (Sector 4).
 func (lvl *Level) drawVesselBackground(screen *ebiten.Image, camX float64) {
-	// 1. Dark industrial hull base (cold steel enclosed chamber)
-	vector.DrawFilledRect(screen, 0, 0, 320, 180, color.RGBA{9, 13, 22, 255}, false)
+	atlas := assets.Get()
 
-	// 2. Vertical hull bulkhead seams & structural wall plates (0.12x parallax)
-	bulkheadOffset := math.Mod(camX*0.12, 64.0)
-	if bulkheadOffset < 0 {
-		bulkheadOffset += 64.0
-	}
-	for i := -1; i < 7; i++ {
-		bx := float32(float64(i*64) - bulkheadOffset)
-		// Plate shadow groove
-		vector.DrawFilledRect(screen, bx, 0, 62, 180, color.RGBA{13, 19, 32, 255}, false)
-		vector.DrawFilledRect(screen, bx+62, 0, 2, 180, color.RGBA{6, 9, 15, 255}, false)
-		// Subtle mid-wall panel bevel
-		vector.DrawFilledRect(screen, bx+4, 30, 54, 110, color.RGBA{10, 15, 26, 255}, false)
-		vector.DrawFilledRect(screen, bx+4, 30, 54, 1, color.RGBA{22, 32, 50, 255}, false)
-		vector.DrawFilledRect(screen, bx+4, 139, 54, 1, color.RGBA{18, 25, 40, 255}, false)
-	}
+	if atlas.BgVessel != nil {
+		bgW := float64(atlas.BgVessel.Bounds().Dx())
+		bgOffset := math.Mod(camX*0.10, bgW)
+		if bgOffset < 0 {
+			bgOffset += bgW
+		}
+		op1 := &ebiten.DrawImageOptions{}
+		op1.GeoM.Translate(-bgOffset, 0)
+		screen.DrawImage(atlas.BgVessel, op1)
 
-	// 3. Reinforced Portholes looking out to cold outer space (0.06x parallax)
-	portholeOffset := math.Mod(camX*0.06, 160.0)
-	if portholeOffset < 0 {
-		portholeOffset += 160.0
-	}
-	for i := -1; i < 4; i++ {
-		px := float32(float64(i*160+40) - portholeOffset)
-		// Octagonal thick steel porthole bezel
-		vector.DrawFilledRect(screen, px-2, 22, 44, 30, color.RGBA{24, 32, 48, 255}, false)
-		vector.DrawFilledRect(screen, px-1, 23, 42, 28, color.RGBA{15, 20, 32, 255}, false)
-		// Deep space view inside porthole aperture
-		vector.DrawFilledRect(screen, px+2, 25, 36, 24, color.RGBA{4, 6, 12, 255}, false)
-		// Distant tiny stars glimpsed outside
-		vector.DrawFilledRect(screen, px+8, 29, 1, 1, color.RGBA{210, 230, 255, 220}, false)
-		vector.DrawFilledRect(screen, px+26, 33, 1, 1, color.RGBA{230, 245, 255, 255}, false)
-		vector.DrawFilledRect(screen, px+18, 42, 1, 1, color.RGBA{160, 200, 255, 180}, false)
-		// Glass diagonal reflection sheen
-		vector.DrawFilledRect(screen, px+12, 25, 3, 24, color.RGBA{80, 180, 220, 40}, false)
-		vector.DrawFilledRect(screen, px+20, 25, 1, 24, color.RGBA{80, 180, 220, 25}, false)
-		// Porthole corner rivets
-		vector.DrawFilledRect(screen, px-1, 23, 2, 2, color.RGBA{65, 85, 115, 255}, false)
-		vector.DrawFilledRect(screen, px+39, 23, 2, 2, color.RGBA{65, 85, 115, 255}, false)
-		vector.DrawFilledRect(screen, px-1, 49, 2, 2, color.RGBA{65, 85, 115, 255}, false)
-		vector.DrawFilledRect(screen, px+39, 49, 2, 2, color.RGBA{65, 85, 115, 255}, false)
+		op2 := &ebiten.DrawImageOptions{}
+		op2.GeoM.Translate(bgW-bgOffset, 0)
+		screen.DrawImage(atlas.BgVessel, op2)
+	} else {
+		// 1. Dark industrial hull base (cold steel enclosed chamber)
+		vector.DrawFilledRect(screen, 0, 0, 320, 180, color.RGBA{9, 13, 22, 255}, false)
+
+		// 2. Vertical hull bulkhead seams & structural wall plates (0.12x parallax)
+		bulkheadOffset := math.Mod(camX*0.12, 64.0)
+		if bulkheadOffset < 0 {
+			bulkheadOffset += 64.0
+		}
+		for i := -1; i < 7; i++ {
+			bx := float32(float64(i*64) - bulkheadOffset)
+			// Plate shadow groove
+			vector.DrawFilledRect(screen, bx, 0, 62, 180, color.RGBA{13, 19, 32, 255}, false)
+			vector.DrawFilledRect(screen, bx+62, 0, 2, 180, color.RGBA{6, 9, 15, 255}, false)
+			// Subtle mid-wall panel bevel
+			vector.DrawFilledRect(screen, bx+4, 30, 54, 110, color.RGBA{10, 15, 26, 255}, false)
+			vector.DrawFilledRect(screen, bx+4, 30, 54, 1, color.RGBA{22, 32, 50, 255}, false)
+			vector.DrawFilledRect(screen, bx+4, 139, 54, 1, color.RGBA{18, 25, 40, 255}, false)
+		}
+
+		// 3. Reinforced Portholes looking out to cold outer space (0.06x parallax)
+		portholeOffset := math.Mod(camX*0.06, 160.0)
+		if portholeOffset < 0 {
+			portholeOffset += 160.0
+		}
+		for i := -1; i < 4; i++ {
+			px := float32(float64(i*160+40) - portholeOffset)
+			// Octagonal thick steel porthole bezel
+			vector.DrawFilledRect(screen, px-2, 22, 44, 30, color.RGBA{24, 32, 48, 255}, false)
+			vector.DrawFilledRect(screen, px-1, 23, 42, 28, color.RGBA{15, 20, 32, 255}, false)
+			// Deep space view inside porthole aperture
+			vector.DrawFilledRect(screen, px+2, 25, 36, 24, color.RGBA{4, 6, 12, 255}, false)
+			// Distant tiny stars glimpsed outside
+			vector.DrawFilledRect(screen, px+8, 29, 1, 1, color.RGBA{210, 230, 255, 220}, false)
+			vector.DrawFilledRect(screen, px+26, 33, 1, 1, color.RGBA{230, 245, 255, 255}, false)
+			vector.DrawFilledRect(screen, px+18, 42, 1, 1, color.RGBA{160, 200, 255, 180}, false)
+			// Glass diagonal reflection sheen
+			vector.DrawFilledRect(screen, px+12, 25, 3, 24, color.RGBA{80, 180, 220, 40}, false)
+			vector.DrawFilledRect(screen, px+20, 25, 1, 24, color.RGBA{80, 180, 220, 25}, false)
+			// Porthole corner rivets
+			vector.DrawFilledRect(screen, px-1, 23, 2, 2, color.RGBA{65, 85, 115, 255}, false)
+			vector.DrawFilledRect(screen, px+39, 23, 2, 2, color.RGBA{65, 85, 115, 255}, false)
+			vector.DrawFilledRect(screen, px-1, 49, 2, 2, color.RGBA{65, 85, 115, 255}, false)
+			vector.DrawFilledRect(screen, px+39, 49, 2, 2, color.RGBA{65, 85, 115, 255}, false)
+		}
 	}
 
 	// 4. Overhead structural ceiling I-beams & conduit channels
@@ -1173,63 +1233,80 @@ func (lvl *Level) drawVesselBackground(screen *ebiten.Image, camX float64) {
 
 // drawReactorBackground renders the destabilizing engine chamber and plasma containment cores (Sector 5).
 func (lvl *Level) drawReactorBackground(screen *ebiten.Image, camX float64) {
-	// 1. Deep carbonized chamber alloy base
-	vector.DrawFilledRect(screen, 0, 0, 320, 180, color.RGBA{16, 10, 8, 255}, false)
+	atlas := assets.Get()
 
-	// 2. Heavy structural blast columns with hazard chevrons (0.12x parallax)
-	colOffset := math.Mod(camX*0.12, 110.0)
-	if colOffset < 0 {
-		colOffset += 110.0
-	}
-	for i := -1; i < 5; i++ {
-		cx := float32(float64(i*110) - colOffset)
-		// Main column body (heavy scorched metal)
-		vector.DrawFilledRect(screen, cx, 0, 28, 180, color.RGBA{28, 18, 14, 255}, false)
-		vector.DrawFilledRect(screen, cx+2, 0, 24, 180, color.RGBA{22, 14, 10, 255}, false)
+	if atlas.BgReactor != nil {
+		bgW := float64(atlas.BgReactor.Bounds().Dx())
+		bgOffset := math.Mod(camX*0.10, bgW)
+		if bgOffset < 0 {
+			bgOffset += bgW
+		}
+		op1 := &ebiten.DrawImageOptions{}
+		op1.GeoM.Translate(-bgOffset, 0)
+		screen.DrawImage(atlas.BgReactor, op1)
 
-		// Diagonal hazard chevrons on column flanks
-		for hy := 0; hy < 180; hy += 12 {
-			vector.DrawFilledRect(screen, cx, float32(hy), 4, 6, color.RGBA{220, 160, 25, 230}, false)
-			vector.DrawFilledRect(screen, cx, float32(hy+6), 4, 6, color.RGBA{20, 12, 8, 230}, false)
-			vector.DrawFilledRect(screen, cx+24, float32(hy), 4, 6, color.RGBA{220, 160, 25, 230}, false)
-			vector.DrawFilledRect(screen, cx+24, float32(hy+6), 4, 6, color.RGBA{20, 12, 8, 230}, false)
+		op2 := &ebiten.DrawImageOptions{}
+		op2.GeoM.Translate(bgW-bgOffset, 0)
+		screen.DrawImage(atlas.BgReactor, op2)
+	} else {
+		// 1. Deep carbonized chamber alloy base
+		vector.DrawFilledRect(screen, 0, 0, 320, 180, color.RGBA{16, 10, 8, 255}, false)
+
+		// 2. Heavy structural blast columns with hazard chevrons (0.12x parallax)
+		colOffset := math.Mod(camX*0.12, 110.0)
+		if colOffset < 0 {
+			colOffset += 110.0
+		}
+		for i := -1; i < 5; i++ {
+			cx := float32(float64(i*110) - colOffset)
+			// Main column body (heavy scorched metal)
+			vector.DrawFilledRect(screen, cx, 0, 28, 180, color.RGBA{28, 18, 14, 255}, false)
+			vector.DrawFilledRect(screen, cx+2, 0, 24, 180, color.RGBA{22, 14, 10, 255}, false)
+
+			// Diagonal hazard chevrons on column flanks
+			for hy := 0; hy < 180; hy += 12 {
+				vector.DrawFilledRect(screen, cx, float32(hy), 4, 6, color.RGBA{220, 160, 25, 230}, false)
+				vector.DrawFilledRect(screen, cx, float32(hy+6), 4, 6, color.RGBA{20, 12, 8, 230}, false)
+				vector.DrawFilledRect(screen, cx+24, float32(hy), 4, 6, color.RGBA{220, 160, 25, 230}, false)
+				vector.DrawFilledRect(screen, cx+24, float32(hy+6), 4, 6, color.RGBA{20, 12, 8, 230}, false)
+			}
+
+			// Vertical central coolant conduit on column
+			vector.DrawFilledRect(screen, cx+12, 0, 4, 180, color.RGBA{45, 25, 18, 255}, false)
+			vector.DrawFilledRect(screen, cx+13, 0, 2, 180, color.RGBA{85, 45, 30, 255}, false)
 		}
 
-		// Vertical central coolant conduit on column
-		vector.DrawFilledRect(screen, cx+12, 0, 4, 180, color.RGBA{45, 25, 18, 255}, false)
-		vector.DrawFilledRect(screen, cx+13, 0, 2, 180, color.RGBA{85, 45, 30, 255}, false)
-	}
+		// 3. Pulsing Molten Plasma Reactor Core Cylinders (0.12x parallax)
+		for i := -1; i < 5; i++ {
+			rx := float32(float64(i*110+55) - colOffset)
 
-	// 3. Pulsing Molten Plasma Reactor Core Cylinders (0.12x parallax)
-	for i := -1; i < 5; i++ {
-		rx := float32(float64(i*110+55) - colOffset)
+			// Upper and lower containment flanges
+			vector.DrawFilledRect(screen, rx-2, 16, 20, 8, color.RGBA{50, 32, 22, 255}, false)
+			vector.DrawFilledRect(screen, rx-2, 146, 20, 8, color.RGBA{50, 32, 22, 255}, false)
 
-		// Upper and lower containment flanges
-		vector.DrawFilledRect(screen, rx-2, 16, 20, 8, color.RGBA{50, 32, 22, 255}, false)
-		vector.DrawFilledRect(screen, rx-2, 146, 20, 8, color.RGBA{50, 32, 22, 255}, false)
+			// Quartz containment cylinder
+			vector.DrawFilledRect(screen, rx, 24, 16, 122, color.RGBA{30, 16, 12, 240}, false)
 
-		// Quartz containment cylinder
-		vector.DrawFilledRect(screen, rx, 24, 16, 122, color.RGBA{30, 16, 12, 240}, false)
+			// Pulsing molten plasma core
+			pulse := 0.65 + 0.35*math.Sin(lvl.AnimTimer*3.2+float64(i)*1.3)
+			coreW := float32(10.0 * pulse)
+			coreX := rx + 8.0 - coreW*0.5
 
-		// Pulsing molten plasma core
-		pulse := 0.65 + 0.35*math.Sin(lvl.AnimTimer*3.2+float64(i)*1.3)
-		coreW := float32(10.0 * pulse)
-		coreX := rx + 8.0 - coreW*0.5
+			// Outer plasma heat halo
+			vector.DrawFilledRect(screen, coreX, 24, coreW, 122, color.RGBA{220, 60, 15, 150}, false)
+			// Intense amber/yellow plasma core
+			innerW := float32(4.0 * pulse)
+			if innerW < 1 {
+				innerW = 1
+			}
+			innerX := rx + 8.0 - innerW*0.5
+			vector.DrawFilledRect(screen, innerX, 24, innerW, 122, color.RGBA{255, 200, 50, 230}, false)
+			// White-hot center filament
+			vector.DrawFilledRect(screen, rx+7, 24, 2, 122, color.RGBA{255, 255, 230, 255}, false)
 
-		// Outer plasma heat halo
-		vector.DrawFilledRect(screen, coreX, 24, coreW, 122, color.RGBA{220, 60, 15, 150}, false)
-		// Intense amber/yellow plasma core
-		innerW := float32(4.0 * pulse)
-		if innerW < 1 {
-			innerW = 1
+			// Glass reflection sheen
+			vector.DrawFilledRect(screen, rx+2, 24, 2, 122, color.RGBA{255, 200, 150, 45}, false)
 		}
-		innerX := rx + 8.0 - innerW*0.5
-		vector.DrawFilledRect(screen, innerX, 24, innerW, 122, color.RGBA{255, 200, 50, 230}, false)
-		// White-hot center filament
-		vector.DrawFilledRect(screen, rx+7, 24, 2, 122, color.RGBA{255, 255, 230, 255}, false)
-
-		// Glass reflection sheen
-		vector.DrawFilledRect(screen, rx+2, 24, 2, 122, color.RGBA{255, 200, 150, 45}, false)
 	}
 
 	// 4. Overhead High-Pressure Steam & Coolant Ducts

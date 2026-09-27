@@ -16,6 +16,21 @@ import (
 //go:embed sprites/*.png
 var spriteFS embed.FS
 
+//go:embed backgrounds/*.png
+var backgroundFS embed.FS
+
+func loadEmbeddedBackground(path string) *ebiten.Image {
+	data, err := backgroundFS.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil
+	}
+	return ebiten.NewImageFromImage(img)
+}
+
 func loadEmbeddedPNG(path string) *ebiten.Image {
 	data, err := spriteFS.ReadFile(path)
 	if err != nil {
@@ -79,6 +94,13 @@ type TextureAtlas struct {
 	Earth              *ebiten.Image
 	Mars               *ebiten.Image
 	Jupiter            *ebiten.Image
+
+	// Parallax Backgrounds
+	BgMoon    *ebiten.Image
+	BgCrimson *ebiten.Image
+	BgIce     *ebiten.Image
+	BgVessel  *ebiten.Image
+	BgReactor *ebiten.Image
 
 	// UI
 	HeartFull    *ebiten.Image
@@ -1549,6 +1571,13 @@ func buildAtlas() *TextureAtlas {
 
 	a.HealthPickup = loadEmbeddedPNG("sprites/health_pickup.png")
 	a.BoostPickup = loadEmbeddedPNG("sprites/boost_pickup.png")
+
+	// Load thematic parallax backgrounds
+	a.BgMoon = loadEmbeddedBackground("backgrounds/bg_moon.png")
+	a.BgCrimson = loadEmbeddedBackground("backgrounds/bg_crimson.png")
+	a.BgIce = loadEmbeddedBackground("backgrounds/bg_ice.png")
+	a.BgVessel = loadEmbeddedBackground("backgrounds/bg_vessel.png")
+	a.BgReactor = loadEmbeddedBackground("backgrounds/bg_reactor.png")
 
 	return a
 }
