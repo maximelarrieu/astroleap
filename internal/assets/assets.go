@@ -101,6 +101,7 @@ type TextureAtlas struct {
 	BgIce     *ebiten.Image
 	BgVessel  *ebiten.Image
 	BgReactor *ebiten.Image
+	BgOlympus *ebiten.Image
 
 	// UI
 	HeartFull    *ebiten.Image
@@ -1578,6 +1579,7 @@ func buildAtlas() *TextureAtlas {
 	a.BgIce = loadEmbeddedBackground("backgrounds/bg_ice.png")
 	a.BgVessel = loadEmbeddedBackground("backgrounds/bg_vessel.png")
 	a.BgReactor = loadEmbeddedBackground("backgrounds/bg_reactor.png")
+	a.BgOlympus = loadEmbeddedBackground("backgrounds/bg_olympus.png")
 
 	return a
 }

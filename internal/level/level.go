@@ -14,7 +14,7 @@ import (
 const (
 	TileSize    = 16
 	LevelHeight = 12
-	MaxLevels   = 5
+	MaxLevels   = 10
 )
 
 const (
@@ -154,7 +154,7 @@ func makeGrid(w, h int) [][]int {
 	return g
 }
 
-// LoadLevel loads the level for the given sector (1 to 5).
+// LoadLevel loads the level for the given sector (1 to 10).
 func LoadLevel(sector int) *Level {
 	switch sector {
 	case 2:
@@ -165,6 +165,16 @@ func LoadLevel(sector int) *Level {
 		return NewLevel4()
 	case 5:
 		return NewLevel5()
+	case 6:
+		return NewLevel6()
+	case 7:
+		return NewLevel7()
+	case 8:
+		return NewLevel8()
+	case 9:
+		return NewLevel9()
+	case 10:
+		return NewLevel10()
 	default:
 		return NewLevel1()
 	}
@@ -1033,6 +1043,8 @@ func (lvl *Level) DrawBackground(screen *ebiten.Image, camX float64) {
 		bgImg = atlas.BgCrimson
 	case "ice":
 		bgImg = atlas.BgIce
+	case "olympus":
+		bgImg = atlas.BgOlympus
 	default:
 		bgImg = atlas.BgMoon
 	}
@@ -1410,7 +1422,7 @@ func (lvl *Level) DrawTiles(screen *ebiten.Image, camX float64) {
 					tileImg = atlas.TileSurfaceCrimson
 				} else if lvl.Theme == "ice" {
 					tileImg = atlas.TileSurfaceIce
-				} else if lvl.Theme == "vessel" {
+				} else if lvl.Theme == "vessel" || lvl.Theme == "olympus" {
 					tileImg = atlas.TileSurfaceVessel
 				} else if lvl.Theme == "reactor" {
 					tileImg = atlas.TileSurfaceReactor
@@ -1422,7 +1434,7 @@ func (lvl *Level) DrawTiles(screen *ebiten.Image, camX float64) {
 					tileImg = atlas.TileRockCrimson
 				} else if lvl.Theme == "ice" {
 					tileImg = atlas.TileRockIce
-				} else if lvl.Theme == "vessel" {
+				} else if lvl.Theme == "vessel" || lvl.Theme == "olympus" {
 					tileImg = atlas.TileRockVessel
 				} else if lvl.Theme == "reactor" {
 					tileImg = atlas.TileRockReactor
@@ -1432,7 +1444,7 @@ func (lvl *Level) DrawTiles(screen *ebiten.Image, camX float64) {
 			case TilePlatform:
 				tileImg = atlas.TilePlatform
 			case TileSpike:
-				if lvl.Theme == "vessel" && atlas.TileSpikesLaser != nil {
+				if (lvl.Theme == "vessel" || lvl.Theme == "olympus") && atlas.TileSpikesLaser != nil {
 					tileImg = atlas.TileSpikesLaser
 				} else if lvl.Theme == "reactor" && atlas.TileSpikesPlasma != nil {
 					tileImg = atlas.TileSpikesPlasma

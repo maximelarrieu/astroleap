@@ -269,8 +269,11 @@ func (s *PlayState) Update(dt float64) {
 		audio.Get().ToggleMute()
 	}
 
-	// Dev / Quick warp shortcuts (F1..F5 to jump directly to any sector)
-	fKeys := []ebiten.Key{ebiten.KeyF1, ebiten.KeyF2, ebiten.KeyF3, ebiten.KeyF4, ebiten.KeyF5}
+	// Dev / Quick warp shortcuts (F1..F10 to jump directly to any sector)
+	fKeys := []ebiten.Key{
+		ebiten.KeyF1, ebiten.KeyF2, ebiten.KeyF3, ebiten.KeyF4, ebiten.KeyF5,
+		ebiten.KeyF6, ebiten.KeyF7, ebiten.KeyF8, ebiten.KeyF9, ebiten.KeyF10,
+	}
 	for i := 0; i < len(fKeys); i++ {
 		if inpututil.IsKeyJustPressed(fKeys[i]) {
 			audio.Get().PlayJump()
@@ -701,15 +704,15 @@ func (s *PlayState) Update(dt float64) {
 	// 6. Check Goal: Escape Lander, Airlock, or Warp Console Reached
 	landerLocked := s.lvl.HasBoss && s.boss != nil && !s.boss.Dead
 	if playerRect.Overlaps(s.lvl.GetLanderRect()) {
-		if s.lvl.GoalKind == "airlock" && !s.hasSecurityKey {
-			// Sector 4: Key required
+		if s.lvl.GoalKind == "airlock" && s.lvl.SecurityKey != nil && !s.hasSecurityKey {
+			// Sector 4, 8: Key required
 			s.player.X = s.lvl.LanderX - 22
 			s.SpawnFloatingText("AIRLOCK LOCKED - KEY REQUIRED!", s.player.X-24, s.player.Y-8, color.RGBA{255, 70, 70, 255})
 			s.TriggerShake(1.5, 0.10)
-		} else if s.lvl.GoalKind == "warp_console" && s.repairCoresCount < 3 {
-			// Sector 5: 3 Cores required
+		} else if s.lvl.GoalKind == "warp_console" && len(s.lvl.RepairCores) > 0 && s.repairCoresCount < len(s.lvl.RepairCores) {
+			// Sector 5: Cores required
 			s.player.X = s.lvl.LanderX - 22
-			s.SpawnFloatingText(fmt.Sprintf("REPAIR CORES NEEDED (%d/3)!", s.repairCoresCount), s.player.X-28, s.player.Y-8, color.RGBA{255, 160, 50, 255})
+			s.SpawnFloatingText(fmt.Sprintf("REPAIR CORES NEEDED (%d/%d)!", s.repairCoresCount, len(s.lvl.RepairCores)), s.player.X-28, s.player.Y-8, color.RGBA{255, 160, 50, 255})
 			s.TriggerShake(1.5, 0.10)
 		} else if !landerLocked {
 			audio.Get().PlayWin()
@@ -718,8 +721,13 @@ func (s *PlayState) Update(dt float64) {
 			if s.lvl.GoalKind == "airlock" {
 				clearMsg = "AIRLOCK CLEARED! +1000"
 			} else if s.lvl.GoalKind == "warp_console" {
-				clearMsg = "WARP DRIVE ENGAGED! +2000"
-				s.score += 1000
+				if s.currentSector == 10 {
+					clearMsg = "A.E.G.I.S. OVERRIDDEN! +5000"
+					s.score += 4000
+				} else {
+					clearMsg = "WARP DRIVE ENGAGED! +2000"
+					s.score += 1000
+				}
 			}
 			s.SpawnFloatingText(clearMsg, s.player.X-16, s.player.Y-8, color.RGBA{100, 255, 120, 255})
 			if s.currentSector < level.MaxLevels {
@@ -790,8 +798,8 @@ func (s *PlayState) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// Sector 4: Airlock Security Barrier (Active until Keycard is found)
-	if s.lvl.GoalKind == "airlock" && !s.hasSecurityKey {
+	// Sector 4 & 8: Airlock Security Barrier (Active until Keycard is found)
+	if s.lvl.GoalKind == "airlock" && s.lvl.SecurityKey != nil && !s.hasSecurityKey {
 		landerRect := s.lvl.GetLanderRect()
 		lsx := landerRect.X - effCamX
 		if lsx > -40 && lsx < 330 {
@@ -801,14 +809,14 @@ func (s *PlayState) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// Sector 5: Warp Engine Containment Shield (Active until all 3 cores repaired)
-	if s.lvl.GoalKind == "warp_console" && s.repairCoresCount < 3 {
+	// Sector 5: Warp Engine Containment Shield (Active until all cores repaired)
+	if s.lvl.GoalKind == "warp_console" && len(s.lvl.RepairCores) > 0 && s.repairCoresCount < len(s.lvl.RepairCores) {
 		landerRect := s.lvl.GetLanderRect()
 		lsx := landerRect.X - effCamX
 		if lsx > -40 && lsx < 330 {
 			vector.DrawFilledRect(screen, float32(lsx-3), float32(landerRect.Y-3), float32(landerRect.W+6), float32(landerRect.H+6), color.RGBA{255, 140, 30, 120}, false)
 			vector.StrokeRect(screen, float32(lsx-3), float32(landerRect.Y-3), float32(landerRect.W+6), float32(landerRect.H+6), 1, color.RGBA{255, 200, 80, 240}, false)
-			ui.DrawText(screen, fmt.Sprintf("%d/3 CORES", s.repairCoresCount), int(lsx-10), int(landerRect.Y-9), color.RGBA{255, 190, 50, 255})
+			ui.DrawText(screen, fmt.Sprintf("%d/%d CORES", s.repairCoresCount, len(s.lvl.RepairCores)), int(lsx-10), int(landerRect.Y-9), color.RGBA{255, 190, 50, 255})
 		}
 	}
 

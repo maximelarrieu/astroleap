@@ -104,9 +104,9 @@ func DrawHUD(screen *ebiten.Image, health int, maxHealth int, crystals int, scor
 	scoreStr := formatScore(score)
 	DrawText(screen, scoreStr, 44, 5, color.RGBA{240, 240, 255, 255})
 
-	// 3. Sector Indicator (X: 84)
-	secStr := "S" + strconv.Itoa(sector) + "/5"
-	DrawText(screen, secStr, 84, 5, color.RGBA{255, 215, 60, 255})
+	// 3. Sector Indicator (X: 82)
+	secStr := "S" + strconv.Itoa(sector) + "/10"
+	DrawText(screen, secStr, 82, 5, color.RGBA{255, 215, 60, 255})
 
 	// 4. Energy Crystals (X: 118 icon, X: 132 count)
 	if atlas.Crystals[0] != nil {

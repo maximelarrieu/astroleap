@@ -71,10 +71,16 @@ func (s *TitleState) Update(dt float64) {
 		return
 	}
 
-	// Quick Sector selection (1..5 or F1..F5)
-	numKeys := []ebiten.Key{ebiten.Key1, ebiten.Key2, ebiten.Key3, ebiten.Key4, ebiten.Key5}
-	fKeys := []ebiten.Key{ebiten.KeyF1, ebiten.KeyF2, ebiten.KeyF3, ebiten.KeyF4, ebiten.KeyF5}
-	for i := 0; i < 5; i++ {
+	// Quick Sector selection (1..9, 0 or F1..F10)
+	numKeys := []ebiten.Key{
+		ebiten.Key1, ebiten.Key2, ebiten.Key3, ebiten.Key4, ebiten.Key5,
+		ebiten.Key6, ebiten.Key7, ebiten.Key8, ebiten.Key9, ebiten.Key0,
+	}
+	fKeys := []ebiten.Key{
+		ebiten.KeyF1, ebiten.KeyF2, ebiten.KeyF3, ebiten.KeyF4, ebiten.KeyF5,
+		ebiten.KeyF6, ebiten.KeyF7, ebiten.KeyF8, ebiten.KeyF9, ebiten.KeyF10,
+	}
+	for i := 0; i < len(numKeys); i++ {
 		if inpututil.IsKeyJustPressed(numKeys[i]) || inpututil.IsKeyJustPressed(fKeys[i]) {
 			audio.Get().PlayJump()
 			s.machine.Change(NewPlayStateWithProgress(s.machine, i+1, 0, 0, nil))

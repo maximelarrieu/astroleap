@@ -153,14 +153,47 @@ func TestSector5RepairCoreMechanic(t *testing.T) {
 	ps.repairCores[2].Collected = true
 	ps.repairCoresCount = 3
 
-	// Test reaching goal with all 3 cores
+	// Test reaching goal with all 3 cores (Sector 5 transitions to Sector 6 via SectorClearState)
+	ps.player.X = ps.lvl.LanderX
+	ps.player.Y = ps.lvl.LanderY
+	ps.player.VY = 0
+	ps.Update(0.016)
+
+	if _, ok := m.Current().(*SectorClearState); !ok {
+		t.Errorf("expected transition to SectorClearState after repairing all 3 cores, got %T", m.Current())
+	}
+}
+
+func TestSector10AegisBossAndWinMechanic(t *testing.T) {
+	m := NewMachine(nil)
+	ps := NewPlayStateWithProgress(m, 10, 0, 0, nil)
+
+	if !ps.lvl.HasBoss || ps.boss == nil {
+		t.Fatalf("expected sector 10 to have a boss encounter")
+	}
+
+	// Goal should be locked while Boss is alive
+	ps.player.X = ps.lvl.LanderX
+	ps.player.Y = ps.lvl.LanderY
+	ps.player.VY = 0
+	ps.Update(0.016)
+
+	if _, ok := m.Current().(*WinState); ok {
+		t.Errorf("goal should be locked while A.E.G.I.S. boss is alive")
+	}
+
+	// Defeat Boss
+	ps.boss.Health = 0
+	ps.boss.Dead = true
+
+	// Reaching goal now should trigger campaign WinState!
 	ps.player.X = ps.lvl.LanderX
 	ps.player.Y = ps.lvl.LanderY
 	ps.player.VY = 0
 	ps.Update(0.016)
 
 	if _, ok := m.Current().(*WinState); !ok {
-		t.Errorf("expected transition to WinState after repairing all 3 cores, got %T", m.Current())
+		t.Errorf("expected transition to WinState after defeating A.E.G.I.S. in sector 10, got %T", m.Current())
 	}
 }
 
@@ -203,8 +236,8 @@ func TestMovingPlatformCarriage(t *testing.T) {
 func TestCodexState(t *testing.T) {
 	m := NewMachine(nil)
 	cs := NewCodexState(m)
-	if len(cs.logs) != 5 {
-		t.Fatalf("expected 5 logs in CodexState, got %d", len(cs.logs))
+	if len(cs.logs) != 10 {
+		t.Fatalf("expected 10 logs in CodexState, got %d", len(cs.logs))
 	}
 	if cs.selectedIdx != 0 {
 		t.Errorf("expected initial selectedIdx 0, got %d", cs.selectedIdx)

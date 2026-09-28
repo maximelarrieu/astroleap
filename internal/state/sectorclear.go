@@ -38,14 +38,27 @@ func NewSectorClearState(m *Machine, sector int, score int, crystals int, p *ent
 
 func NewSectorClearStateWithRecords(m *Machine, sector int, score int, crystals int, p *entity.Player, elapsedTime float64, medals int) *SectorClearState {
 	secName := "LUNAR OUTPOST"
-	if sector == 2 {
+	switch sector {
+	case 1:
+		secName = "LUNAR OUTPOST"
+	case 2:
 		secName = "PHOBOS RIDGE"
-	} else if sector == 3 {
+	case 3:
 		secName = "EUROPA ICE CORE"
-	} else if sector == 4 {
+	case 4:
 		secName = "MOTHERSHIP CORRIDOR"
-	} else if sector == 5 {
+	case 5:
 		secName = "REACTOR BAY"
+	case 6:
+		secName = "STATION OLYMPUS"
+	case 7:
+		secName = "CELESTIAL ELEVATOR"
+	case 8:
+		secName = "AEGIS DEFENSE GRID"
+	case 9:
+		secName = "STRATOSPHERE DESCENT"
+	case 10:
+		secName = "TERRAN ARK CORE"
 	}
 
 	return &SectorClearState{
@@ -124,7 +137,7 @@ func (s *SectorClearState) Draw(screen *ebiten.Image) {
 	scoreStr := "TOTAL SCORE: " + strconv.Itoa(s.score)
 	ui.DrawText(screen, scoreStr, 88, 74, color.RGBA{255, 255, 255, 255})
 
-	crystStr := "CRYSTALS: " + strconv.Itoa(s.crystals) + "   MEDALS: " + strconv.Itoa(s.medals) + "/15"
+	crystStr := "CRYSTALS: " + strconv.Itoa(s.crystals) + "   MEDALS: " + strconv.Itoa(s.medals) + "/30"
 	ui.DrawText(screen, crystStr, 76, 86, color.RGBA{100, 245, 255, 255})
 
 	timeStr := "MISSION TIME: " + records.FormatTime(s.elapsedTime)
@@ -135,8 +148,12 @@ func (s *SectorClearState) Draw(screen *ebiten.Image) {
 		nextPrompt := "PRESS SPACE FOR SECTOR " + strconv.Itoa(nextSector)
 		if nextSector == 5 {
 			nextPrompt = "PRESS SPACE FOR REACTOR BAY"
+		} else if nextSector == 6 {
+			nextPrompt = "ACT II: WARP TO STATION OLYMPUS"
+		} else if nextSector == 10 {
+			nextPrompt = "FINAL: BREACH TERRAN ARK CORE"
 		}
-		ui.DrawText(screen, nextPrompt, 68, 122, color.RGBA{255, 200, 80, 255})
+		ui.DrawText(screen, nextPrompt, 60, 122, color.RGBA{255, 200, 80, 255})
 	}
 }
 

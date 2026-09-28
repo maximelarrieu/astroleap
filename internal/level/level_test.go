@@ -104,6 +104,37 @@ func TestSectorThemesAndWeapons(t *testing.T) {
 	if len(s5.RepairCores) != 3 {
 		t.Errorf("sector 5 expected 3 repair cores, got %d", len(s5.RepairCores))
 	}
+
+	s6 := LoadLevel(6)
+	if s6.Theme != "olympus" || s6.GoalKind != "lander" {
+		t.Errorf("sector 6 unexpected theme/goal: %s/%s", s6.Theme, s6.GoalKind)
+	}
+
+	s7 := LoadLevel(7)
+	if s7.Theme != "vessel" || s7.GoalKind != "lander" {
+		t.Errorf("sector 7 unexpected theme/goal: %s/%s", s7.Theme, s7.GoalKind)
+	}
+
+	s8 := LoadLevel(8)
+	if s8.Theme != "vessel" || s8.GoalKind != "airlock" {
+		t.Errorf("sector 8 unexpected theme/goal: %s/%s", s8.Theme, s8.GoalKind)
+	}
+	if s8.SecurityKey == nil {
+		t.Errorf("sector 8 missing SecurityKey")
+	}
+
+	s9 := LoadLevel(9)
+	if s9.Theme != "crimson" || s9.GoalKind != "lander" {
+		t.Errorf("sector 9 unexpected theme/goal: %s/%s", s9.Theme, s9.GoalKind)
+	}
+
+	s10 := LoadLevel(10)
+	if s10.Theme != "reactor" || s10.GoalKind != "warp_console" {
+		t.Errorf("sector 10 unexpected theme/goal: %s/%s", s10.Theme, s10.GoalKind)
+	}
+	if !s10.HasBoss {
+		t.Errorf("sector 10 expected HasBoss = true")
+	}
 }
 
 func TestMovingPlatformsDoNotOverlapSolidTiles(t *testing.T) {
