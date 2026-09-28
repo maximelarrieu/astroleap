@@ -199,3 +199,44 @@ func TestMovingPlatformCarriage(t *testing.T) {
 		t.Errorf("player fell through platform: Y=%f startY=%f", ps.player.Y, startY)
 	}
 }
+
+func TestCodexState(t *testing.T) {
+	m := NewMachine(nil)
+	cs := NewCodexState(m)
+	if len(cs.logs) != 5 {
+		t.Fatalf("expected 5 logs in CodexState, got %d", len(cs.logs))
+	}
+	if cs.selectedIdx != 0 {
+		t.Errorf("expected initial selectedIdx 0, got %d", cs.selectedIdx)
+	}
+
+	cs.Update(0.016)
+}
+
+func TestDataTerminalCollection(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := NewMachine(nil)
+	ps := NewPlayStateWithProgress(m, 1, 0, 0, nil)
+
+	if len(ps.terminals) == 0 {
+		t.Fatalf("expected sector 1 to spawn at least 1 terminal")
+	}
+
+	term := ps.terminals[0]
+	// Position player on terminal
+	ps.player.X = term.X
+	ps.player.Y = term.Y
+
+	ps.Update(0.016)
+
+	if !term.Collected {
+		t.Errorf("expected terminal to be collected")
+	}
+	if ps.radioTimer <= 0 {
+		t.Errorf("expected radioTimer to be activated")
+	}
+	if ps.radioTitle == "" || ps.radioText == "" {
+		t.Errorf("expected radioTitle and radioText to be populated")
+	}
+}
+

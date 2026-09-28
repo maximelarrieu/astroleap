@@ -103,6 +103,13 @@ type BoostPickupData struct {
 	TileY int
 }
 
+// TerminalData defines narrative lore transmission terminal coordinates and log ID.
+type TerminalData struct {
+	TileX int
+	TileY int
+	LogID string
+}
+
 // Level represents a playable stage with tile grid, hazards, and background layers.
 type Level struct {
 	SectorIndex        int
@@ -122,6 +129,7 @@ type Level struct {
 	CrumblingPlatforms []CrumbleData
 	HealthPickups      []HealthPickupData
 	BoostPickups       []BoostPickupData
+	Terminals          []TerminalData
 	SecurityKey        *SecurityKeyData
 	RepairCores        []RepairCoreData
 	LanderX            float64
@@ -301,6 +309,11 @@ func NewLevel1() *Level {
 		{TileX: 64, TileY: 2},
 	}
 
+	// 8. Holographic Data-Log Terminals
+	lvl.Terminals = []TerminalData{
+		{TileX: 52, TileY: 4, LogID: "LOG-01"},
+	}
+
 	return lvl
 }
 
@@ -455,6 +468,11 @@ func NewLevel2() *Level {
 	}
 	lvl.BoostPickups = []BoostPickupData{
 		{TileX: 78, TileY: 5},
+	}
+
+	// 10. Holographic Data-Log Terminals
+	lvl.Terminals = []TerminalData{
+		{TileX: 58, TileY: 2, LogID: "LOG-02"},
 	}
 
 	return lvl
@@ -628,6 +646,11 @@ func NewLevel3() *Level {
 		{TileX: 48, TileY: 4},
 	}
 
+	// 10. Holographic Data-Log Terminals
+	lvl.Terminals = []TerminalData{
+		{TileX: 74, TileY: 4, LogID: "LOG-03"},
+	}
+
 	return lvl
 }
 
@@ -786,6 +809,11 @@ func NewLevel4() *Level {
 	}
 	lvl.BoostPickups = []BoostPickupData{
 		{TileX: 75, TileY: 2},
+	}
+
+	// 10. Holographic Data-Log Terminals
+	lvl.Terminals = []TerminalData{
+		{TileX: 48, TileY: 5, LogID: "LOG-04"},
 	}
 
 	return lvl
@@ -959,6 +987,11 @@ func NewLevel5() *Level {
 	}
 	lvl.BoostPickups = []BoostPickupData{
 		{TileX: 72, TileY: 2},
+	}
+
+	// 10. Holographic Data-Log Terminals
+	lvl.Terminals = []TerminalData{
+		{TileX: 62, TileY: 3, LogID: "LOG-05"},
 	}
 
 	return lvl

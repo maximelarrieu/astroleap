@@ -8,10 +8,11 @@ import (
 )
 
 type GameRecords struct {
-	BestScore   int     `json:"best_score"`
-	BestTime    float64 `json:"best_time"` // in seconds
-	TotalMedals int     `json:"total_medals"`
-	Completions int     `json:"completions"`
+	BestScore    int      `json:"best_score"`
+	BestTime     float64  `json:"best_time"` // in seconds
+	TotalMedals  int      `json:"total_medals"`
+	Completions  int      `json:"completions"`
+	UnlockedLogs []string `json:"unlocked_logs,omitempty"`
 }
 
 type RecordResult struct {
@@ -86,6 +87,26 @@ func SubmitRun(score int, timeSeconds float64, medals int) RecordResult {
 	}
 
 	return res
+}
+
+// UnlockLog records a newly decrypted narrative log ID and saves to disk.
+func UnlockLog(id string) bool {
+	recordsOnce.Do(load)
+	recordsMu.Lock()
+	defer recordsMu.Unlock()
+
+	for _, existing := range currentRecords.UnlockedLogs {
+		if existing == id {
+			return false
+		}
+	}
+	currentRecords.UnlockedLogs = append(currentRecords.UnlockedLogs, id)
+
+	data, err := json.Marshal(currentRecords)
+	if err == nil {
+		_ = os.WriteFile(getRecordFilePath(), data, 0644)
+	}
+	return true
 }
 
 // FormatTime converts seconds into MM:SS.S string format.

@@ -64,6 +64,13 @@ func (s *TitleState) Update(dt float64) {
 		return
 	}
 
+	// Open Lore Codex
+	if inpututil.IsKeyJustPressed(ebiten.KeyC) || inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		audio.Get().PlayJump()
+		s.machine.Change(NewCodexState(s.machine))
+		return
+	}
+
 	// Quick Sector selection (1..5 or F1..F5)
 	numKeys := []ebiten.Key{ebiten.Key1, ebiten.Key2, ebiten.Key3, ebiten.Key4, ebiten.Key5}
 	fKeys := []ebiten.Key{ebiten.KeyF1, ebiten.KeyF2, ebiten.KeyF3, ebiten.KeyF4, ebiten.KeyF5}
@@ -106,11 +113,8 @@ func (s *TitleState) Draw(screen *ebiten.Image) {
 	}
 
 	// 7. Instructions / Controls
-	ui.DrawText(screen, "A / D : MOVE", 48, 142, color.RGBA{170, 180, 210, 255})
-	ui.DrawText(screen, "SPACE : JUMP / THRUSTER", 134, 142, color.RGBA{170, 180, 210, 255})
-	ui.DrawText(screen, "J : SHOOT WEAPON", 54, 154, color.RGBA{60, 220, 255, 255})
-	ui.DrawText(screen, "Q : SWAP WEAPON", 168, 154, color.RGBA{255, 210, 60, 255})
-	ui.DrawText(screen, "M : MUTE AUDIO", 114, 166, color.RGBA{120, 135, 170, 255})
+	ui.DrawText(screen, "A/D:MOVE  SPACE:JUMP  J:FIRE  Q:SWAP", 36, 146, color.RGBA{170, 185, 215, 240})
+	ui.DrawText(screen, "C : DATA LOGS / CODEX    M : MUTE", 46, 160, color.RGBA{100, 240, 255, 255})
 }
 
 func (s *TitleState) Exit() {}

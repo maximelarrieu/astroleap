@@ -10,6 +10,7 @@ import (
 	"astroleap/internal/entity"
 	"astroleap/internal/input"
 	"astroleap/internal/level"
+	"astroleap/internal/narrative"
 	"astroleap/internal/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -39,6 +40,12 @@ type PlayState struct {
 	hasSecurityKey   bool
 	repairCores      []*entity.RepairCore
 	repairCoresCount int
+	terminals        []*entity.DataTerminal
+
+	radioTitle  string
+	radioAuthor string
+	radioText   string
+	radioTimer  float64
 
 	crumblingPlatforms []*entity.CrumblingPlatform
 	healthPickups      []*entity.HealthPickup
@@ -170,6 +177,16 @@ func NewPlayStateWithRecords(m *Machine, sector int, score int, crystals int, ca
 		ps.boostPickups = append(ps.boostPickups, entity.NewThrusterBoostPickup(
 			float64(bp.TileX*level.TileSize),
 			float64(bp.TileY*level.TileSize),
+		))
+	}
+
+	// Spawn Holographic Lore Data Terminals from level template
+	for _, td := range ps.lvl.Terminals {
+		ps.terminals = append(ps.terminals, entity.NewDataTerminal(
+			float64(td.TileX*level.TileSize),
+			float64(td.TileY*level.TileSize),
+			sector,
+			td.LogID,
 		))
 	}
 
@@ -486,6 +503,29 @@ func (s *PlayState) Update(dt float64) {
 					s.SpawnFloatingText("WARP DRIVE READY! +1000", rc.X-24, rc.Y-6, color.RGBA{80, 255, 120, 255})
 				}
 				s.unlockBannerTimer = 3.2
+			}
+		}
+	}
+
+	// 3f. Update Holographic Data Terminals (Lore Discovery)
+	if s.radioTimer > 0 {
+		s.radioTimer -= dt
+	}
+	for _, term := range s.terminals {
+		term.Update(dt)
+		if !term.Collected && playerRect.Overlaps(term.GetRect()) {
+			term.Collected = true
+			audio.Get().PlayPowerup()
+			s.particles.SpawnCrystalSparkles(term.X+8, term.Y+8)
+			s.TriggerShake(2.0, 0.12)
+			s.score += 500
+			s.SpawnFloatingText("LOG DECRYPTED! +500", term.X-16, term.Y-6, color.RGBA{80, 240, 255, 255})
+			narrative.UnlockLog(term.LogID)
+			if log, ok := narrative.GetLog(term.LogID); ok {
+				s.radioTitle = log.ID + ": " + log.Title
+				s.radioAuthor = log.Author
+				s.radioText = log.Teaser
+				s.radioTimer = 5.0
 			}
 		}
 	}
@@ -820,6 +860,11 @@ func (s *PlayState) Draw(screen *ebiten.Image) {
 		pk.Draw(screen, effCamX)
 	}
 
+	// 4b. Holographic Data-Log Terminals
+	for _, term := range s.terminals {
+		term.Draw(screen, effCamX)
+	}
+
 	// 5. Enemies
 	for _, e := range s.enemies {
 		e.Draw(screen, effCamX)
@@ -879,6 +924,17 @@ func (s *PlayState) Draw(screen *ebiten.Image) {
 		vector.StrokeRect(screen, 46, 38, 228, 26, 1, color.RGBA{80, 230, 255, 255}, false)
 		ui.DrawText(screen, s.unlockBannerText, 60, 43, color.RGBA{255, 225, 60, 255})
 		ui.DrawText(screen, "PRESS J TO FIRE!", 106, 52, color.RGBA{180, 240, 255, 255})
+	}
+
+	// 10b. Radio Transmission Banner (Lore Data-Log Decryption)
+	if s.radioTimer > 0 {
+		vector.DrawFilledRect(screen, 12, 134, 296, 38, color.RGBA{10, 16, 28, 245}, false)
+		vector.StrokeRect(screen, 12, 134, 296, 38, 1, color.RGBA{60, 220, 255, 255}, false)
+		// Glowing status diode
+		vector.DrawFilledRect(screen, 18, 140, 4, 4, color.RGBA{80, 240, 255, 255}, false)
+		ui.DrawText(screen, "TRANSMISSION: "+s.radioTitle, 26, 139, color.RGBA{255, 215, 60, 255})
+		ui.DrawText(screen, s.radioAuthor, 26, 149, color.RGBA{130, 210, 255, 240})
+		ui.DrawText(screen, s.radioText, 26, 159, color.RGBA{230, 240, 255, 255})
 	}
 
 	// 11. Paused Overlay

@@ -89,34 +89,36 @@ func (s *WinState) Draw(screen *ebiten.Image) {
 	screen.DrawImage(atlas.Lander, landerOp)
 
 	// Expanded Banner Modal
-	vector.DrawFilledRect(screen, 32, 38, 256, 108, color.RGBA{15, 20, 35, 230}, false)
-	vector.StrokeRect(screen, 32, 38, 256, 108, 1, color.RGBA{100, 230, 255, 255}, false)
+	vector.DrawFilledRect(screen, 24, 26, 272, 130, color.RGBA{15, 20, 35, 240}, false)
+	vector.StrokeRect(screen, 24, 26, 272, 130, 1, color.RGBA{100, 230, 255, 255}, false)
 
-	ui.DrawText(screen, "MISSION ACCOMPLISHED!", 94, 46, color.RGBA{255, 220, 60, 255})
-	ui.DrawText(screen, "WARP DRIVE ENGAGED - SHIP REPAIRED!", 54, 58, color.RGBA{140, 240, 255, 255})
+	ui.DrawText(screen, "ACT I: MISSION ACCOMPLISHED!", 78, 34, color.RGBA{255, 220, 60, 255})
+	ui.DrawText(screen, "WARP JUMP VECTOR: EARTH ORBIT", 74, 46, color.RGBA{140, 240, 255, 255})
 
 	scoreStr := "FINAL SCORE: " + strconv.Itoa(s.score)
-	ui.DrawText(screen, scoreStr, 56, 72, color.RGBA{255, 255, 255, 255})
+	ui.DrawText(screen, scoreStr, 40, 60, color.RGBA{255, 255, 255, 255})
 
 	rankCol := color.RGBA{255, 215, 50, 255}
 	if s.rank == "S" {
 		rankCol = color.RGBA{255, 80, 140, 255}
 	}
 	rankStr := "RANK: [" + s.rank + "]"
-	ui.DrawText(screen, rankStr, 196, 72, rankCol)
+	ui.DrawText(screen, rankStr, 208, 60, rankCol)
 
 	statsStr := "CRYSTALS: " + strconv.Itoa(s.crystals) + "   MEDALS: " + strconv.Itoa(s.medals) + "/15"
-	ui.DrawText(screen, statsStr, 56, 84, color.RGBA{100, 245, 255, 255})
+	ui.DrawText(screen, statsStr, 40, 72, color.RGBA{100, 245, 255, 255})
 
 	timeStr := "TOTAL TIME: " + records.FormatTime(s.timeSeconds)
-	ui.DrawText(screen, timeStr, 56, 96, color.RGBA{255, 220, 100, 255})
+	ui.DrawText(screen, timeStr, 40, 84, color.RGBA{255, 220, 100, 255})
 
-	if s.recordRes.NewHighScore || s.recordRes.NewBestTime {
-		if int(s.timer*6)%2 == 0 {
-			ui.DrawText(screen, "★ NEW BEST RECORD! ★", 92, 110, color.RGBA{255, 240, 80, 255})
-		}
-	} else if s.timer > 1.0 && math.Sin(s.timer*6.0) > -0.2 {
-		ui.DrawText(screen, "PRESS SPACE TO RETURN", 94, 130, color.RGBA{200, 220, 255, 255})
+	// Act II Teaser Transmission
+	vector.DrawFilledRect(screen, 32, 96, 256, 26, color.RGBA{28, 14, 18, 230}, false)
+	vector.StrokeRect(screen, 32, 96, 256, 26, 1, color.RGBA{255, 70, 70, 240}, false)
+	ui.DrawText(screen, "ALERT: EARTH QUARANTINE GRID DETECTED!", 38, 101, color.RGBA{255, 80, 80, 255})
+	ui.DrawText(screen, "ACT II: THE ORBITAL BREACH (SECTORS 6-10)", 36, 111, color.RGBA{255, 215, 60, 255})
+
+	if s.timer > 1.0 && math.Sin(s.timer*6.0) > -0.2 {
+		ui.DrawText(screen, "PRESS SPACE TO RETURN TO TITLE", 66, 138, color.RGBA{200, 220, 255, 255})
 	}
 }
 
